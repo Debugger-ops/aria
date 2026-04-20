@@ -1,0 +1,138 @@
+{
+  "name": "aria-ai-companion",
+  "displayName": "Aria – AI Companion",
+  "description": "Free AI assistant (Gemini) for coding, conversation, workflows and documents — directly inside VS Code.",
+  "version": "1.0.0",
+  "publisher": "aria-ai",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["AI", "Chat", "Other"],
+  "keywords": ["ai", "gemini", "chatbot", "assistant", "coding"],
+  "icon": "media/icon.png",
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aria.openChat",
+        "title": "Aria: Open Chat",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "aria.explainCode",
+        "title": "Aria: Explain Selected Code"
+      },
+      {
+        "command": "aria.fixCode",
+        "title": "Aria: Fix / Debug Selected Code"
+      },
+      {
+        "command": "aria.improveCode",
+        "title": "Aria: Improve / Refactor Selected Code"
+      },
+      {
+        "command": "aria.writeTests",
+        "title": "Aria: Write Tests for Selected Code"
+      },
+      {
+        "command": "aria.askAboutFile",
+        "title": "Aria: Ask About This File"
+      },
+      {
+        "command": "aria.newChat",
+        "title": "Aria: Start New Conversation",
+        "icon": "$(add)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aria-sidebar",
+          "title": "Aria AI",
+          "icon": "media/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "aria-sidebar": [
+        {
+          "type": "webview",
+          "id": "aria.chatView",
+          "name": "Chat",
+          "icon": "media/sidebar-icon.svg"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorHasSelection",
+          "command": "aria.explainCode",
+          "group": "aria@1"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "aria.fixCode",
+          "group": "aria@2"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "aria.improveCode",
+          "group": "aria@3"
+        },
+        {
+          "when": "editorHasSelection",
+          "command": "aria.writeTests",
+          "group": "aria@4"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "aria.newChat",
+          "when": "view == aria.chatView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Aria AI",
+      "properties": {
+        "aria.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Your Google Gemini API key (free at https://aistudio.google.com/apikey). Leave blank to use your Aria server URL instead.",
+          "markdownDescription": "Get your free key at [Google AI Studio](https://aistudio.google.com/apikey)."
+        },
+        "aria.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "URL of your Aria Next.js server (used when no Gemini API key is set)."
+        },
+        "aria.model": {
+          "type": "string",
+          "default": "gemini-1.5-flash",
+          "enum": ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"],
+          "description": "Gemini model to use. gemini-1.5-flash is free and fast."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "aria.openChat",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

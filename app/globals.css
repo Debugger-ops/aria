@@ -1,26 +1,200 @@
-@import "tailwindcss";
+/* ── Design Tokens: Light Theme ─────────────────────────────── */
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+:root,
+[data-theme='light'] {
+  --bg-page:            #f4f4f8;
+  --surface-primary:    #ffffff;
+  --surface-secondary:  #fafafa;
+  --surface-elevated:   #f0f0f6;
+  --surface-hover:      #f0f0f6;
+  --surface-active:     #ede9fb;
+  --text-primary:       #0f0f14;
+  --text-secondary:     #4a4a5a;
+  --text-muted:         #9191a8;
+  --border-color:       #e4e4ee;
+  --input-bg:           #f6f6fb;
+  --bubble-ai-bg:       #f3f3f9;
+  --bubble-ai-text:     #0f0f14;
+  --accent-purple:      #7c3aed;
+  --accent-blue:        #2563eb;
+  --accent-teal:        #0891b2;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ── Design Tokens: Dark Theme ──────────────────────────────── */
+
+[data-theme='dark'] {
+  --bg-page:            #0d0d14;
+  --surface-primary:    #13131f;
+  --surface-secondary:  #0f0f1a;
+  --surface-elevated:   #1c1c2e;
+  --surface-hover:      #1e1e30;
+  --surface-active:     #20184a;
+  --text-primary:       #f0f0f8;
+  --text-secondary:     #a0a0c0;
+  --text-muted:         #60607a;
+  --border-color:       #2a2a42;
+  --input-bg:           #1a1a28;
+  --bubble-ai-bg:       #1c1c2e;
+  --bubble-ai-text:     #f0f0f8;
+  --accent-purple:      #8b5cf6;
+  --accent-blue:        #3b82f6;
+  --accent-teal:        #06b6d4;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Design Tokens: Ocean Theme ─────────────────────────────── */
+
+[data-theme='ocean'] {
+  --bg-page:            #030d1a;
+  --surface-primary:    #051524;
+  --surface-secondary:  #04101c;
+  --surface-elevated:   #091f35;
+  --surface-hover:      #0c2540;
+  --surface-active:     #0d2d50;
+  --text-primary:       #e0f2fe;
+  --text-secondary:     #7dd3fc;
+  --text-muted:         #38bdf8;
+  --border-color:       #0c3a5e;
+  --input-bg:           #071c30;
+  --bubble-ai-bg:       #091f35;
+  --bubble-ai-text:     #e0f2fe;
+  --accent-purple:      #38bdf8;
+  --accent-blue:        #0ea5e9;
+  --accent-teal:        #06d6a0;
+}
+
+/* ── Design Tokens: Forest Theme ────────────────────────────── */
+
+[data-theme='forest'] {
+  --bg-page:            #050e08;
+  --surface-primary:    #0a1a0d;
+  --surface-secondary:  #071209;
+  --surface-elevated:   #112917;
+  --surface-hover:      #153220;
+  --surface-active:     #183d25;
+  --text-primary:       #dcfce7;
+  --text-secondary:     #86efac;
+  --text-muted:         #4ade80;
+  --border-color:       #14532d;
+  --input-bg:           #0d1f12;
+  --bubble-ai-bg:       #112917;
+  --bubble-ai-text:     #dcfce7;
+  --accent-purple:      #4ade80;
+  --accent-blue:        #22c55e;
+  --accent-teal:        #34d399;
+}
+
+/* ── Design Tokens: Sunset Theme ────────────────────────────── */
+
+[data-theme='sunset'] {
+  --bg-page:            #16050a;
+  --surface-primary:    #200a10;
+  --surface-secondary:  #1a070d;
+  --surface-elevated:   #2e1018;
+  --surface-hover:      #381420;
+  --surface-active:     #45182a;
+  --text-primary:       #fff1f2;
+  --text-secondary:     #fda4af;
+  --text-muted:         #fb7185;
+  --border-color:       #4c0519;
+  --input-bg:           #260c14;
+  --bubble-ai-bg:       #2e1018;
+  --bubble-ai-text:     #fff1f2;
+  --accent-purple:      #f472b6;
+  --accent-blue:        #fb923c;
+  --accent-teal:        #fbbf24;
+}
+
+/* ── Design Tokens: Midnight Theme ──────────────────────────── */
+
+[data-theme='midnight'] {
+  --bg-page:            #000000;
+  --surface-primary:    #080808;
+  --surface-secondary:  #050505;
+  --surface-elevated:   #101010;
+  --surface-hover:      #141414;
+  --surface-active:     #1a0a2e;
+  --text-primary:       #ffffff;
+  --text-secondary:     #c084fc;
+  --text-muted:         #7c3aed;
+  --border-color:       #1a1a1a;
+  --input-bg:           #0d0d0d;
+  --bubble-ai-bg:       #100820;
+  --bubble-ai-text:     #f5f0ff;
+  --accent-purple:      #a855f7;
+  --accent-blue:        #7c3aed;
+  --accent-teal:        #c084fc;
+}
+
+/* ── Reset & Base ───────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto,
+    Helvetica, Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+#__next,
+main {
+  height: 100%;
+}
+
+a {
+  color: var(--accent-purple);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Scrollbar (global, thin) ───────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 999px;
+}
+
+/* ── Focus ring ─────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 2px;
 }

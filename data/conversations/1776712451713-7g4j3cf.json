@@ -1,0 +1,32 @@
+{
+  "sessionId": "1776712451713-7g4j3cf",
+  "title": "hello",
+  "createdAt": "2026-04-20T19:14:11.755Z",
+  "updatedAt": "2026-04-20T19:14:22.821Z",
+  "messages": [
+    {
+      "id": "1776712451755-vsw1k7s",
+      "role": "user",
+      "content": "Hey Aria! Say hello and introduce yourself 🎙️",
+      "timestamp": "2026-04-20T19:14:11.755Z"
+    },
+    {
+      "id": "1776712451755-i0wgze9",
+      "role": "assistant",
+      "content": "Hey! 👋 Really glad you're here. I'm Aria — your AI companion. What's on your mind today?",
+      "timestamp": "2026-04-20T19:14:13.819Z"
+    },
+    {
+      "id": "1776712459331-9dkwgmx",
+      "role": "user",
+      "content": "hello",
+      "timestamp": "2026-04-20T19:14:19.331Z"
+    },
+    {
+      "id": "1776712459331-i9wfa8o",
+      "role": "assistant",
+      "content": "Hey! 👋 Really glad you're here. I'm Aria — your AI companion. What's on your mind today?",
+      "timestamp": "2026-04-20T19:14:22.821Z"
+    }
+  ]
+}

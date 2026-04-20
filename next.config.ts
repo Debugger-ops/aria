@@ -1,7 +1,10 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Use the WASM SWC fallback when the native binary is unavailable
+  experimental: {
+    swcTraceProfiling: false,
+  },
 };
 
 export default nextConfig;

@@ -1,0 +1,61 @@
+/* ── App Shell ──────────────────────────────────────────────── */
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-page);
+  transition: background 0.3s ease;
+}
+
+.app-shell__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── Loading splash ─────────────────────────────────────────── */
+
+.app-shell--loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.app-shell__splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.app-shell__splash-icon {
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.08); }
+}
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .app-shell__main {
+    flex: 1;
+    width: 100%;
+  }
+}

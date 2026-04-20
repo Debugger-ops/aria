@@ -1,0 +1,64 @@
+/* ── Design Tokens: Light Theme ─────────────────────────────── */
+
+:root,
+[data-theme='light'] {
+  /* Backgrounds */
+  --bg-page:            #f4f4f8;
+  --surface-primary:    #ffffff;
+  --surface-secondary:  #fafafa;
+  --surface-elevated:   #f0f0f6;
+  --surface-hover:      #f0f0f6;
+  --surface-active:     #ede9fb;
+
+  /* Text */
+  --text-primary:   #0f0f14;
+  --text-secondary: #4a4a5a;
+  --text-muted:     #9191a8;
+
+  /* Borders */
+  --border-color: #e4e4ee;
+
+  /* Inputs */
+  --input-bg: #f6f6fb;
+
+  /* Bubbles */
+  --bubble-ai-bg:   #f3f3f9;
+  --bubble-ai-text: #0f0f14;
+
+  /* Accent palette */
+  --accent-purple: #7c3aed;
+  --accent-blue:   #2563eb;
+  --accent-teal:   #0891b2;
+}
+
+/* ── Design Tokens: Dark Theme ──────────────────────────────── */
+
+[data-theme='dark'] {
+  /* Backgrounds */
+  --bg-page:            #0d0d14;
+  --surface-primary:    #13131f;
+  --surface-secondary:  #0f0f1a;
+  --surface-elevated:   #1c1c2e;
+  --surface-hover:      #1e1e30;
+  --surface-active:     #20184a;
+
+  /* Text */
+  --text-primary:   #f0f0f8;
+  --text-secondary: #a0a0c0;
+  --text-muted:     #60607a;
+
+  /* Borders */
+  --border-color: #2a2a42;
+
+  /* Inputs */
+  --input-bg: #1a1a28;
+
+  /* Bubbles */
+  --bubble-ai-bg:   #1c1c2e;
+  --bubble-ai-text: #f0f0f8;
+
+  /* Accents stay the same, slightly brighter */
+  --accent-purple: #8b5cf6;
+  --accent-blue:   #3b82f6;
+  --accent-teal:   #06b6d4;
+}
