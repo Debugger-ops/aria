@@ -108,7 +108,22 @@ export default function MessageBubble({
         <div className="bubble__footer">
           <span className="bubble__time">{formatTimestamp(new Date(message.timestamp))}</span>
 
-          {/* Only show actions on AI messages */}
+          {/* Copy button on user messages */}
+          {isUser && (
+            <div className="bubble__actions">
+              <button
+                className="bubble__action-btn"
+                onClick={handleCopy}
+                title={copied ? 'Copied!' : 'Copy message'}
+                aria-label="Copy message"
+                type="button"
+              >
+                {copied ? '✓' : '⎘'}
+              </button>
+            </div>
+          )}
+
+          {/* Actions on AI messages */}
           {!isUser && (
             <div className="bubble__actions">
               {/* Thumbs Up */}

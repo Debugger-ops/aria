@@ -5,6 +5,29 @@ import { ChatSession } from '@/lib/types';
 import type { AppTheme } from '@/app/page';
 import './Sidebar.css';
 
+// ── Trash icon ────────────────────────────────────────────────────
+function TrashIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M9 6V4h6v2" />
+    </svg>
+  );
+}
+
 // ── Theme config ─────────────────────────────────────────────────
 
 export const THEMES: { id: AppTheme; label: string; swatch: string }[] = [
@@ -23,6 +46,7 @@ interface SidebarProps {
   activeSessionId: string | null;
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
+  onDeleteSession: (id: string) => void;
   theme: AppTheme;
   onSetTheme: (theme: AppTheme) => void;
 }
@@ -46,10 +70,23 @@ export default function Sidebar({
   activeSessionId,
   onSelectSession,
   onNewChat,
+  onDeleteSession,
   theme,
   onSetTheme,
 }: SidebarProps) {
   const [showThemes, setShowThemes] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const filteredSessions = searchQuery.trim()
+    ? sessions.filter(
+        (s) =>
+          s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.messages.some((m) =>
+            m.content.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+      )
+    : sessions;
 
   return (
     <aside className="sidebar" aria-label="Chat history">
@@ -82,24 +119,86 @@ export default function Sidebar({
         New Conversation
       </button>
 
+      {/* Search */}
+      <div className="sidebar__search">
+        <svg className="sidebar__search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="search"
+          className="sidebar__search-input"
+          placeholder="Search conversations…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="Search conversations"
+        />
+        {searchQuery && (
+          <button
+            className="sidebar__search-clear"
+            onClick={() => setSearchQuery('')}
+            type="button"
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       {/* History list */}
       <nav className="sidebar__history" aria-label="Previous conversations">
         {sessions.length === 0 ? (
           <p className="sidebar__empty">No conversations yet. Start chatting!</p>
+        ) : filteredSessions.length === 0 ? (
+          <p className="sidebar__empty">No matches found.</p>
         ) : (
           <ul className="sidebar__list" role="list">
-            {sessions.map((s) => (
-              <li key={s.id}>
-                <button
-                  className={`sidebar__item ${s.id === activeSessionId ? 'sidebar__item--active' : ''}`}
-                  onClick={() => onSelectSession(s.id)}
-                  type="button"
-                  aria-current={s.id === activeSessionId ? 'true' : undefined}
-                  title={s.title}
-                >
-                  <span className="sidebar__item-title">{s.title}</span>
-                  <span className="sidebar__item-date">{formatDate(new Date(s.updatedAt))}</span>
-                </button>
+            {filteredSessions.map((s) => (
+              <li key={s.id} className="sidebar__list-item">
+                {confirmDeleteId === s.id ? (
+                  <div className="sidebar__item-confirm">
+                    <span className="sidebar__confirm-text">Delete this chat?</span>
+                    <button
+                      className="sidebar__confirm-yes"
+                      onClick={() => {
+                        onDeleteSession(s.id);
+                        setConfirmDeleteId(null);
+                      }}
+                      type="button"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      className="sidebar__confirm-no"
+                      onClick={() => setConfirmDeleteId(null)}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="sidebar__item-row">
+                    <button
+                      className={`sidebar__item ${s.id === activeSessionId ? 'sidebar__item--active' : ''}`}
+                      onClick={() => onSelectSession(s.id)}
+                      type="button"
+                      aria-current={s.id === activeSessionId ? 'true' : undefined}
+                      title={s.title}
+                    >
+                      <span className="sidebar__item-title">{s.title}</span>
+                      <span className="sidebar__item-date">{formatDate(new Date(s.updatedAt))}</span>
+                    </button>
+                    <button
+                      className="sidebar__item-delete"
+                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(s.id); }}
+                      type="button"
+                      aria-label="Delete conversation"
+                      title="Delete conversation"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

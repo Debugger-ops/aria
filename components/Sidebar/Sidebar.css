@@ -84,6 +84,67 @@
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
 }
 
+/* ── Search ─────────────────────────────────────────────────── */
+
+.sidebar__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 0.875rem 0.5rem;
+}
+
+.sidebar__search-icon {
+  position: absolute;
+  left: 0.625rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.sidebar__search-input {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 2rem;
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--border-color);
+  border-radius: 0.625rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.sidebar__search-input::placeholder { color: var(--text-muted); }
+
+.sidebar__search-input:focus {
+  border-color: var(--accent-purple);
+}
+
+/* Hide the native clear button on search inputs */
+.sidebar__search-input::-webkit-search-cancel-button { display: none; }
+
+.sidebar__search-clear {
+  position: absolute;
+  right: 0.5rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: none;
+  background: var(--text-muted);
+  color: var(--surface-secondary);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.sidebar__search-clear:hover { opacity: 1; }
+
 /* ── History ────────────────────────────────────────────────── */
 
 .sidebar__history {
@@ -118,11 +179,29 @@
 
 /* ── List item ──────────────────────────────────────────────── */
 
+.sidebar__list-item {
+  margin-bottom: 0.125rem;
+}
+
+/* Row wrapper: chat button + delete button side by side */
+.sidebar__item-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+
+.sidebar__item-row:hover .sidebar__item-delete {
+  opacity: 1;
+}
+
 .sidebar__item {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 0.625rem 0.75rem;
   border-radius: 0.625rem;
   border: none;
@@ -131,7 +210,6 @@
   text-align: left;
   font-family: inherit;
   transition: background 0.15s ease, color 0.15s ease;
-  margin-bottom: 0.125rem;
 }
 
 .sidebar__item:hover {
@@ -160,6 +238,88 @@
 .sidebar__item-date {
   font-size: 0.6875rem;
   color: var(--text-muted);
+}
+
+/* ── Delete button ───────────────────────────────────────────── */
+
+.sidebar__item-delete {
+  flex-shrink: 0;
+  width: 2rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar__item-delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* ── Inline delete confirmation ──────────────────────────────── */
+
+.sidebar__item-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  background: var(--surface-elevated);
+  border: 1.5px solid rgba(239, 68, 68, 0.3);
+  animation: confirm-in 0.15s ease;
+}
+
+@keyframes confirm-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.sidebar__confirm-text {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__confirm-yes,
+.sidebar__confirm-no {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  border: 1.5px solid transparent;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar__confirm-yes {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.sidebar__confirm-yes:hover {
+  background: rgba(239, 68, 68, 0.28);
+}
+
+.sidebar__confirm-no {
+  background: var(--surface-hover);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+.sidebar__confirm-no:hover {
+  background: var(--surface-active);
 }
 
 /* ── Footer ─────────────────────────────────────────────────── */

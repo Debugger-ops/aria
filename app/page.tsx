@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useReducer } from 'react';
 import { ChatSession } from '@/lib/types';
-import { loadSessions } from '@/lib/chatLogic';
+import { loadSessions, saveSessions } from '@/lib/chatLogic';
 import ChatWindow from '@/components/ChatWindow/ChatWindow';
 import Sidebar from '@/components/Sidebar/Sidebar';
 import './page.css';
@@ -21,7 +21,8 @@ type AppAction =
   | { type: 'SET_SESSIONS'; sessions: ChatSession[]; activeSessionId: string }
   | { type: 'SELECT_SESSION'; id: string }
   | { type: 'NEW_CHAT' }
-  | { type: 'SET_THEME'; theme: AppTheme };
+  | { type: 'SET_THEME'; theme: AppTheme }
+  | { type: 'DELETE_SESSION'; id: string };
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -41,6 +42,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeSessionId: null };
     case 'SET_THEME':
       return { ...state, theme: action.theme };
+    case 'DELETE_SESSION': {
+      const filtered = state.sessions.filter((s) => s.id !== action.id);
+      saveSessions(filtered);
+      return {
+        ...state,
+        sessions: filtered,
+        activeSessionId:
+          state.activeSessionId === action.id
+            ? (filtered[0]?.id ?? null)
+            : state.activeSessionId,
+      };
+    }
     default:
       return state;
   }
@@ -95,6 +108,10 @@ export default function Home() {
     dispatch({ type: 'SET_THEME', theme: t });
   }, []);
 
+  const handleDeleteSession = useCallback((id: string) => {
+    dispatch({ type: 'DELETE_SESSION', id });
+  }, []);
+
   if (!mounted) {
     return (
       <div className="app-shell app-shell--loading">
@@ -113,6 +130,7 @@ export default function Home() {
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
         onNewChat={handleNewChat}
+        onDeleteSession={handleDeleteSession}
         theme={theme}
         onSetTheme={handleSetTheme}
       />

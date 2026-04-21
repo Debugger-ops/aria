@@ -9,6 +9,7 @@ import {
   buildHistory,
   saveSessions,
   loadSessions,
+  formatTimestamp,
 } from '@/lib/chatLogic';
 import { ChatRequest, ChatResponse } from '@/lib/types';
 import {
@@ -250,6 +251,46 @@ export default function ChatWindow({ sessionId, onSessionUpdate }: ChatWindowPro
     setSoundEnabled(isSoundEnabled());
   }, []);
 
+  // ── Export handler ─────────────────────────────────────────────
+  const handleExport = useCallback(() => {
+    if (!messages.length) return;
+    const session = loadSessions().find((s) => s.id === currentSessionId);
+    const title = session?.title ?? 'Aria Chat';
+    const dateStr = new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    const lines: string[] = [
+      `# ${title}`,
+      ``,
+      `_Exported on ${dateStr}_`,
+      ``,
+      `---`,
+      ``,
+    ];
+
+    messages.forEach((msg) => {
+      const who = msg.role === 'user' ? '**You**' : '**Aria**';
+      const time = formatTimestamp(new Date(msg.timestamp));
+      lines.push(`${who} · _${time}_`);
+      lines.push(``);
+      lines.push(msg.content);
+      lines.push(``);
+      lines.push(`---`);
+      lines.push(``);
+    });
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase().slice(0, 50)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [messages, currentSessionId]);
+
   const isEmpty = messages.length === 0;
 
   return (
@@ -275,8 +316,24 @@ export default function ChatWindow({ sessionId, onSessionUpdate }: ChatWindowPro
           </span>
         </div>
 
-        {/* Voice controls in header */}
+        {/* Header actions: export + voice controls */}
         <div className="chat-window__header-actions">
+          {!isEmpty && (
+            <button
+              className="chat-window__export-btn"
+              onClick={handleExport}
+              title="Export conversation as Markdown"
+              aria-label="Export conversation"
+              type="button"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export
+            </button>
+          )}
           <VoiceControls onSettingsChange={handleVoiceSettingsChange} />
         </div>
       </div>
