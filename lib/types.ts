@@ -17,6 +17,7 @@ export interface ChatSession {
   messages: Message[];
   createdAt: Date;
   updatedAt: Date;
+  pinned?: boolean;   // pinned to the top of the sidebar
 }
 
 // Chat application state

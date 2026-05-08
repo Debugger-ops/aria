@@ -30,33 +30,139 @@ interface Conversation {
   messages: DbMessage[];
 }
 
-// ── Component ────────────────────────────────────────────────────
+interface ChartPoint {
+  date: string;
+  label: string;
+  user: number;
+  ai: number;
+  total: number;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: 'user' | 'admin';
+  createdAt: string;
+}
+
+// ── Stacked bar chart (pure SVG) ─────────────────────────────────
+
+function BarChart({ data }: { data: ChartPoint[] }) {
+  const maxVal = Math.max(...data.map((d) => d.total), 1);
+  const W = 700, H = 150, BAR_W = 26;
+  const GAP = (W - data.length * BAR_W) / (data.length + 1);
+
+  return (
+    <div className="admin__chart-wrap">
+      <svg viewBox={`0 0 ${W} ${H + 36}`} className="admin__chart-svg" aria-label="Messages per day chart">
+        {[0.25, 0.5, 0.75, 1].map((frac) => (
+          <line key={frac} x1={0} y1={H - frac * H} x2={W} y2={H - frac * H}
+            stroke="var(--border-color)" strokeWidth="1" strokeDasharray="4,4" />
+        ))}
+        {data.map((d, i) => {
+          const x     = GAP + i * (BAR_W + GAP);
+          const aiH   = (d.ai   / maxVal) * H;
+          const userH = (d.user / maxVal) * H;
+          const totH  = aiH + userH;
+          return (
+            <g key={d.date}>
+              <rect x={x} y={H - aiH} width={BAR_W} height={Math.max(aiH, 0)} rx={3}
+                fill="var(--accent-purple)" opacity="0.75">
+                <title>Aria: {d.ai} on {d.label}</title>
+              </rect>
+              {d.user > 0 && (
+                <rect x={x} y={H - totH} width={BAR_W} height={Math.max(userH, 0)} rx={3}
+                  fill="var(--accent-blue)" opacity="0.9">
+                  <title>You: {d.user} on {d.label}</title>
+                </rect>
+              )}
+              {d.total > 0 && (
+                <text x={x + BAR_W / 2} y={H - totH - 5} textAnchor="middle"
+                  fontSize="8" fill="var(--text-muted)">{d.total}</text>
+              )}
+              {i % 2 === 0 && (
+                <text x={x + BAR_W / 2} y={H + 18} textAnchor="middle"
+                  fontSize="8.5" fill="var(--text-muted)">{d.label}</text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="admin__chart-legend">
+        <span className="admin__legend-dot" style={{ background: 'var(--accent-blue)' }} />
+        <span>Your messages</span>
+        <span className="admin__legend-dot" style={{ background: 'var(--accent-purple)' }} />
+        <span>Aria replies</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Satisfaction ring (SVG) ───────────────────────────────────────
+
+function SatisfactionRing({ pct }: { pct: number }) {
+  const r = 38, circ = 2 * Math.PI * r, dash = (pct / 100) * circ;
+  return (
+    <svg width="96" height="96" viewBox="0 0 96 96" className="admin__ring-svg">
+      <circle cx="48" cy="48" r={r} fill="none" stroke="var(--surface-elevated)" strokeWidth="9" />
+      <circle cx="48" cy="48" r={r} fill="none" stroke="var(--accent-teal)" strokeWidth="9"
+        strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+        transform="rotate(-90 48 48)" style={{ transition: 'stroke-dasharray 1s ease' }} />
+      <text x="48" y="48" textAnchor="middle" dy="0.35em" fontSize="13"
+        fontWeight="700" fill="var(--text-primary)">{pct}%</text>
+    </svg>
+  );
+}
+
+// ── Stat card ────────────────────────────────────────────────────
+
+function StatCard({ label, value, icon, color, subtitle }: {
+  label: string; value: string | number; icon: string;
+  color: 'purple' | 'blue' | 'teal' | 'green' | 'red'; subtitle?: string;
+}) {
+  return (
+    <div className={`stat-card stat-card--${color}`}>
+      <div className="stat-card__icon">{icon}</div>
+      <div className="stat-card__value">{value}</div>
+      <div className="stat-card__label">{label}</div>
+      {subtitle && <div className="stat-card__subtitle">{subtitle}</div>}
+    </div>
+  );
+}
+
+// ── Main dashboard component ─────────────────────────────────────
 
 export default function AdminPage() {
-  const [stats, setStats]           = useState<Stats | null>(null);
-  const [convs, setConvs]           = useState<Conversation[]>([]);
-  const [selected, setSelected]     = useState<Conversation | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [exporting, setExporting]   = useState(false);
-  const [exportFmt, setExportFmt]   = useState<'openai' | 'simple'>('openai');
+  const [stats,        setStats]        = useState<Stats | null>(null);
+  const [convs,        setConvs]        = useState<Conversation[]>([]);
+  const [chartData,    setChartData]    = useState<ChartPoint[]>([]);
+  const [users,        setUsers]        = useState<User[]>([]);
+  const [selected,     setSelected]     = useState<Conversation | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [exporting,    setExporting]    = useState(false);
+  const [exportFmt,    setExportFmt]    = useState<'openai' | 'simple'>('openai');
   const [onlyPositive, setOnlyPositive] = useState(false);
-  const [activeTab, setActiveTab]   = useState<'user' | 'admin'>('user');
-  const [toast, setToast]           = useState('');
+  const [activeTab,    setActiveTab]    = useState<'overview' | 'conversations' | 'users' | 'export'>('overview');
+  const [toast,        setToast]        = useState('');
+  const [convSearch,   setConvSearch]   = useState('');
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3000);
-  };
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, convsRes] = await Promise.all([
+      const [sR, cR, chR, uR] = await Promise.all([
         fetch('/api/admin?action=stats'),
         fetch('/api/admin?action=conversations'),
+        fetch('/api/admin?action=chart-data'),
+        fetch('/api/admin?action=users'),
       ]);
-      setStats(await statsRes.json());
-      setConvs(await convsRes.json());
+      if (sR.ok)  setStats(await sR.json());
+      if (cR.ok)  setConvs(await cR.json());
+      if (chR.ok) setChartData(await chR.json());
+      if (uR.ok)  setUsers(await uR.json());
     } finally {
       setLoading(false);
     }
@@ -64,15 +170,20 @@ export default function AdminPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Inherit theme from main app
+  useEffect(() => {
+    const theme = localStorage.getItem('aria-theme') ?? 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, []);
+
   const handleExport = async () => {
     setExporting(true);
     try {
-      const url = `/api/admin?action=export&format=${exportFmt}&onlyPositive=${onlyPositive}`;
-      const res = await fetch(url);
+      const res  = await fetch(`/api/admin?action=export&format=${exportFmt}&onlyPositive=${onlyPositive}`);
       const text = await res.text();
       const blob = new Blob([text], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = URL.createObjectURL(blob);
       a.download = `aria-training-${exportFmt}-${Date.now()}.jsonl`;
       a.click();
       showToast(`✅ Exported ${text.split('\n').filter(Boolean).length} training pairs`);
@@ -81,332 +192,293 @@ export default function AdminPage() {
     }
   };
 
-  const satisfaction = stats
-    ? stats.thumbsUp + stats.thumbsDown > 0
-      ? Math.round((stats.thumbsUp / (stats.thumbsUp + stats.thumbsDown)) * 100)
-      : null
+  const satisfaction = stats && (stats.thumbsUp + stats.thumbsDown) > 0
+    ? Math.round((stats.thumbsUp / (stats.thumbsUp + stats.thumbsDown)) * 100)
     : null;
+
+  const today         = chartData.at(-1);
+  const totalActivity = chartData.reduce((s, d) => s + d.total, 0);
+
+  const filteredConvs = convSearch.trim()
+    ? convs.filter((c) =>
+        c.title.toLowerCase().includes(convSearch.toLowerCase()) ||
+        c.messages.some((m) => m.content.toLowerCase().includes(convSearch.toLowerCase()))
+      )
+    : convs;
+
+  const TABS = [
+    { id: 'overview',      label: '📊 Overview'      },
+    { id: 'conversations', label: '💬 Conversations' },
+    { id: 'users',         label: '👥 Users'         },
+    { id: 'export',        label: '📤 Export'        },
+  ] as const;
 
   return (
     <div className="admin">
-      {/* ── Header ── */}
+
+      {/* Header */}
       <header className="admin__header">
         <div className="admin__header-brand">
           <span className="admin__logo">✦</span>
           <div>
             <h1 className="admin__title">Aria — Training Dashboard</h1>
-            <p className="admin__subtitle">Collect, review and export conversation data for AI fine-tuning</p>
+            <p className="admin__subtitle">Monitor usage · review conversations · export fine-tuning data</p>
           </div>
         </div>
         <div className="admin__header-actions">
           <button className="admin__btn admin__btn--ghost" onClick={fetchData} disabled={loading}>
             {loading ? '⟳ Loading…' : '↺ Refresh'}
           </button>
-          <a href="/" className="admin__btn admin__btn--ghost">← Back to Aria</a>
+          <a href="/profile" className="admin__btn admin__btn--ghost">👤 Profile</a>
+          <a href="/"        className="admin__btn admin__btn--ghost">← Aria</a>
         </div>
       </header>
 
-      {/* ── Tabs ── */}
+      {/* Tabs */}
       <div className="admin__tabs">
-        <button
-          className={`admin__tab ${activeTab === 'user' ? 'admin__tab--active' : ''}`}
-          onClick={() => setActiveTab('user')}
-        >
-          👤 User Overview
-        </button>
-        <button
-          className={`admin__tab ${activeTab === 'admin' ? 'admin__tab--active' : ''}`}
-          onClick={() => setActiveTab('admin')}
-        >
-          🔧 Admin & Export
-        </button>
+        {TABS.map((t) => (
+          <button key={t.id}
+            className={`admin__tab ${activeTab === t.id ? 'admin__tab--active' : ''}`}
+            onClick={() => setActiveTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* ═══════════ USER TAB ═══════════ */}
-      {activeTab === 'user' && (
+      {/* ══ OVERVIEW ══ */}
+      {activeTab === 'overview' && (
         <div className="admin__content">
-          {/* ── Summary cards ── */}
           <section className="admin__section">
-            <h2 className="admin__section-title">📊 Your Conversation Summary</h2>
+            <h2 className="admin__section-title">At a Glance</h2>
             <div className="admin__cards">
-              <StatCard
-                label="Total Conversations"
-                value={stats?.totalConversations ?? '—'}
-                icon="💬"
-                color="purple"
-              />
-              <StatCard
-                label="Messages Sent"
-                value={stats?.totalUserMessages ?? '—'}
-                icon="✍️"
-                color="blue"
-              />
-              <StatCard
-                label="AI Replies Received"
-                value={stats?.totalAiMessages ?? '—'}
-                icon="🤖"
-                color="teal"
-              />
-              <StatCard
-                label="Satisfaction Rate"
-                value={satisfaction !== null ? `${satisfaction}%` : '—'}
-                icon="😊"
-                color="green"
-                subtitle={
-                  stats
-                    ? `${stats.thumbsUp} 👍  ·  ${stats.thumbsDown} 👎`
-                    : undefined
-                }
-              />
+              <StatCard label="Conversations"   value={stats?.totalConversations ?? '—'} icon="💬" color="purple" />
+              <StatCard label="Messages Sent"   value={stats?.totalUserMessages  ?? '—'} icon="✍️"  color="blue"   subtitle="By you" />
+              <StatCard label="Aria Replies"    value={stats?.totalAiMessages    ?? '—'} icon="🤖" color="teal"   subtitle="Generated" />
+              <StatCard label="14-day Activity" value={totalActivity}                    icon="📅" color="green"
+                subtitle={today ? `${today.total} messages today` : undefined} />
             </div>
           </section>
 
-          {/* ── Feedback insight ── */}
-          {stats && (stats.thumbsUp + stats.thumbsDown) > 0 && (
+          <section className="admin__section">
+            <h2 className="admin__section-title">Messages — Last 14 Days</h2>
+            {chartData.length > 0
+              ? <BarChart data={chartData} />
+              : <p className="admin__empty">Start chatting to see activity here.</p>}
+          </section>
+
+          {satisfaction !== null && (
             <section className="admin__section">
-              <h2 className="admin__section-title">⭐ Feedback Breakdown</h2>
-              <div className="admin__feedback-bar-wrap">
-                <div className="admin__feedback-bar">
-                  <div
-                    className="admin__feedback-bar__fill admin__feedback-bar__fill--up"
-                    style={{ width: `${satisfaction}%` }}
-                  />
-                </div>
-                <div className="admin__feedback-labels">
-                  <span className="admin__feedback-label admin__feedback-label--up">
-                    👍 {stats.thumbsUp} positive
-                  </span>
-                  <span className="admin__feedback-label admin__feedback-label--down">
-                    👎 {stats.thumbsDown} negative
-                  </span>
+              <h2 className="admin__section-title">Satisfaction Score</h2>
+              <div className="admin__satisfaction-row">
+                <SatisfactionRing pct={satisfaction} />
+                <div className="admin__satisfaction-detail">
+                  <p className="admin__satisfaction-desc">
+                    Based on <strong>{(stats?.thumbsUp ?? 0) + (stats?.thumbsDown ?? 0)}</strong> rated messages
+                  </p>
+                  <div className="admin__feedback-bar-wrap">
+                    <div className="admin__feedback-bar">
+                      <div className="admin__feedback-bar__fill admin__feedback-bar__fill--up"
+                        style={{ width: `${satisfaction}%` }} />
+                    </div>
+                  </div>
+                  <div className="admin__feedback-labels">
+                    <span className="admin__feedback-label admin__feedback-label--up">👍 {stats?.thumbsUp} positive</span>
+                    <span className="admin__feedback-label admin__feedback-label--down">👎 {stats?.thumbsDown} negative</span>
+                  </div>
+                  <p className="admin__tip">
+                    💡 Rate Aria&apos;s replies in chat to build a quality signal for fine-tuning.
+                  </p>
                 </div>
               </div>
-              <p className="admin__tip">
-                💡 Tip: Rate AI responses with 👍/👎 in the chat. Positive-rated responses become high-quality training data.
-              </p>
             </section>
           )}
+        </div>
+      )}
 
-          {/* ── Recent conversations ── */}
+      {/* ══ CONVERSATIONS ══ */}
+      {activeTab === 'conversations' && (
+        <div className="admin__content">
           <section className="admin__section">
-            <h2 className="admin__section-title">🕐 Recent Conversations</h2>
-            {convs.length === 0 ? (
-              <p className="admin__empty">No conversations yet. Start chatting with Aria!</p>
-            ) : (
-              <div className="admin__conv-list">
-                {convs.map((c) => (
-                  <button
-                    key={c.sessionId}
-                    className={`admin__conv-item ${selected?.sessionId === c.sessionId ? 'admin__conv-item--active' : ''}`}
-                    onClick={() => setSelected(selected?.sessionId === c.sessionId ? null : c)}
-                  >
-                    <div className="admin__conv-item-title">{c.title}</div>
-                    <div className="admin__conv-item-meta">
-                      {c.messages.length} messages ·{' '}
-                      {new Date(c.updatedAt).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                      })}
-                    </div>
-                  </button>
-                ))}
+            <div className="admin__section-header">
+              <h2 className="admin__section-title">All Conversations <span className="admin__count-badge">{convs.length}</span></h2>
+              <div className="admin__search-wrap">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="search" className="admin__search"
+                  placeholder="Search by title or content…"
+                  value={convSearch} onChange={(e) => setConvSearch(e.target.value)} />
               </div>
-            )}
+            </div>
 
-            {/* Expanded conversation view */}
-            {selected && (
-              <div className="admin__conv-detail">
-                <div className="admin__conv-detail-header">
-                  <strong>{selected.title}</strong>
-                  <button className="admin__btn admin__btn--xs" onClick={() => setSelected(null)}>✕ Close</button>
-                </div>
-                <div className="admin__conv-messages">
-                  {selected.messages.map((m) => (
-                    <div key={m.id} className={`admin__msg admin__msg--${m.role}`}>
-                      <span className="admin__msg-role">{m.role === 'user' ? '👤 You' : '✦ Aria'}</span>
-                      <p className="admin__msg-text">{m.content}</p>
-                      <span className="admin__msg-time">
-                        {new Date(m.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
+            {filteredConvs.length === 0 ? (
+              <p className="admin__empty">{convSearch ? 'No matches.' : 'No conversations yet — start chatting!'}</p>
+            ) : (
+              <div className="admin__conv-layout">
+                <div className="admin__conv-list">
+                  {filteredConvs.map((c) => (
+                    <button key={c.sessionId}
+                      className={`admin__conv-item ${selected?.sessionId === c.sessionId ? 'admin__conv-item--active' : ''}`}
+                      onClick={() => setSelected(selected?.sessionId === c.sessionId ? null : c)}>
+                      <div className="admin__conv-item-title">{c.title}</div>
+                      <div className="admin__conv-item-meta">
+                        <span>{c.messages.length} msgs</span>
+                        <span>{new Date(c.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      </div>
+                    </button>
                   ))}
                 </div>
+
+                {selected && (
+                  <div className="admin__conv-detail">
+                    <div className="admin__conv-detail-header">
+                      <div>
+                        <strong className="admin__conv-detail-title">{selected.title}</strong>
+                        <div className="admin__conv-detail-meta">
+                          {selected.messages.length} messages · {new Date(selected.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button className="admin__btn admin__btn--xs" onClick={() => setSelected(null)}>✕</button>
+                    </div>
+                    <div className="admin__conv-messages">
+                      {selected.messages.map((m) => (
+                        <div key={m.id} className={`admin__msg admin__msg--${m.role}`}>
+                          <div className="admin__msg-header">
+                            <span className="admin__msg-role">{m.role === 'user' ? '👤 You' : '✦ Aria'}</span>
+                            <span className="admin__msg-time">
+                              {new Date(m.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="admin__msg-text">{m.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>
         </div>
       )}
 
-      {/* ═══════════ ADMIN TAB ═══════════ */}
-      {activeTab === 'admin' && (
+      {/* ══ USERS ══ */}
+      {activeTab === 'users' && (
         <div className="admin__content">
-          {/* ── Training data stats ── */}
           <section className="admin__section">
-            <h2 className="admin__section-title">🧠 Training Data Overview</h2>
+            <h2 className="admin__section-title">Registered Users <span className="admin__count-badge">{users.length}</span></h2>
+            {users.length === 0 ? (
+              <p className="admin__empty">No users registered yet.</p>
+            ) : (
+              <div className="admin__users-table-wrap">
+                <table className="admin__users-table">
+                  <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Joined</th></tr></thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id}>
+                        <td>
+                          <div className="admin__user-cell">
+                            <div className="admin__user-avatar">{u.avatar ?? u.name.slice(0,2).toUpperCase()}</div>
+                            <span className="admin__user-name">{u.name}</span>
+                          </div>
+                        </td>
+                        <td className="admin__cell-muted">{u.email}</td>
+                        <td><span className={`admin__role-badge admin__role-badge--${u.role}`}>{u.role}</span></td>
+                        <td className="admin__cell-muted">
+                          {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="admin__section">
+            <h2 className="admin__section-title">Platform Summary</h2>
             <div className="admin__cards">
-              <StatCard
-                label="Training Pairs (All)"
-                value={stats?.exportableTrainingPairs ?? '—'}
-                icon="📦"
-                color="purple"
-                subtitle="All user→AI pairs"
-              />
-              <StatCard
-                label="High-Quality Pairs"
-                value={stats?.thumbsUp ?? '—'}
-                icon="⭐"
-                color="green"
-                subtitle="Thumbs-up rated only"
-              />
-              <StatCard
-                label="Total Messages in DB"
-                value={stats?.totalMessages ?? '—'}
-                icon="🗄️"
-                color="blue"
-              />
-              <StatCard
-                label="Negative Feedback"
-                value={stats?.thumbsDown ?? '—'}
-                icon="⚠️"
-                color="red"
-                subtitle="Responses to improve"
-              />
+              <StatCard label="Total Users"       value={users.length}                             icon="👥" color="blue" />
+              <StatCard label="Admins"             value={users.filter(u=>u.role==='admin').length} icon="🔧" color="purple" />
+              <StatCard label="Training Pairs"     value={stats?.exportableTrainingPairs ?? '—'}   icon="📦" color="teal" />
+              <StatCard label="High-Quality Pairs" value={stats?.thumbsUp ?? '—'}                  icon="⭐" color="green" subtitle="Thumbs-up only" />
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* ══ EXPORT ══ */}
+      {activeTab === 'export' && (
+        <div className="admin__content">
+          <section className="admin__section">
+            <h2 className="admin__section-title">Training Data Overview</h2>
+            <div className="admin__cards">
+              <StatCard label="All Pairs"       value={stats?.exportableTrainingPairs ?? '—'} icon="📦" color="purple" subtitle="Every user→AI pair" />
+              <StatCard label="High-Quality"    value={stats?.thumbsUp ?? '—'}                icon="⭐" color="green"  subtitle="Thumbs-up rated" />
+              <StatCard label="Total in DB"     value={stats?.totalMessages ?? '—'}           icon="🗄️"  color="blue" />
+              <StatCard label="Needs Work"      value={stats?.thumbsDown ?? '—'}              icon="⚠️" color="red"   subtitle="Thumbs-down rated" />
             </div>
           </section>
 
-          {/* ── Export panel ── */}
           <section className="admin__section">
-            <h2 className="admin__section-title">📤 Export Training Data</h2>
+            <h2 className="admin__section-title">Export Fine-Tuning Data</h2>
             <div className="admin__export-panel">
               <p className="admin__export-desc">
-                Export conversations as a <strong>.jsonl</strong> file ready for fine-tuning on OpenAI, HuggingFace, Anthropic, or any other platform.
+                Download conversations as a <strong>.jsonl</strong> file ready for OpenAI, Anthropic, HuggingFace, or any fine-tuning platform.
               </p>
-
               <div className="admin__export-options">
                 <div className="admin__option-group">
                   <label className="admin__option-label">Format</label>
                   <div className="admin__radio-group">
                     <label className="admin__radio">
-                      <input
-                        type="radio"
-                        name="format"
-                        value="openai"
-                        checked={exportFmt === 'openai'}
-                        onChange={() => setExportFmt('openai')}
-                      />
-                      <span>
-                        <strong>OpenAI / Anthropic</strong>
-                        <small>{`{"messages":[{"role":"system",...},{"role":"user",...},{"role":"assistant",...}]}`}</small>
-                      </span>
+                      <input type="radio" name="fmt" value="openai" checked={exportFmt === 'openai'} onChange={() => setExportFmt('openai')} />
+                      <span><strong>OpenAI / Anthropic</strong><small>{`{"messages":[{"role":"system",...}]}`}</small></span>
                     </label>
                     <label className="admin__radio">
-                      <input
-                        type="radio"
-                        name="format"
-                        value="simple"
-                        checked={exportFmt === 'simple'}
-                        onChange={() => setExportFmt('simple')}
-                      />
-                      <span>
-                        <strong>Simple Pairs</strong>
-                        <small>{`{"prompt":"user message","completion":"ai reply"}`}</small>
-                      </span>
+                      <input type="radio" name="fmt" value="simple" checked={exportFmt === 'simple'} onChange={() => setExportFmt('simple')} />
+                      <span><strong>Simple Pairs</strong><small>{`{"prompt":"…","completion":"…"}`}</small></span>
                     </label>
                   </div>
                 </div>
-
                 <div className="admin__option-group">
                   <label className="admin__option-label">Filter</label>
                   <label className="admin__checkbox">
-                    <input
-                      type="checkbox"
-                      checked={onlyPositive}
-                      onChange={(e) => setOnlyPositive(e.target.checked)}
-                    />
-                    <span>
-                      <strong>Positive-rated responses only</strong>
-                      <small>Only include messages users rated 👍 — higher quality training data</small>
-                    </span>
+                    <input type="checkbox" checked={onlyPositive} onChange={(e) => setOnlyPositive(e.target.checked)} />
+                    <span><strong>Positive-rated only</strong><small>Export only 👍 responses for highest-quality data</small></span>
                   </label>
                 </div>
               </div>
-
               <div className="admin__export-footer">
                 <div className="admin__export-count">
-                  {onlyPositive
-                    ? `${stats?.thumbsUp ?? 0} pairs will be exported`
-                    : `${stats?.exportableTrainingPairs ?? 0} pairs will be exported`}
+                  {onlyPositive ? `${stats?.thumbsUp ?? 0}` : `${stats?.exportableTrainingPairs ?? 0}`} pairs will be exported
                 </div>
-                <button
-                  className="admin__btn admin__btn--primary"
-                  onClick={handleExport}
-                  disabled={exporting || (stats?.exportableTrainingPairs ?? 0) === 0}
-                >
+                <button className="admin__btn admin__btn--primary" onClick={handleExport}
+                  disabled={exporting || (stats?.exportableTrainingPairs ?? 0) === 0}>
                   {exporting ? '⏳ Exporting…' : '⬇ Download .jsonl'}
                 </button>
               </div>
             </div>
           </section>
 
-          {/* ── How to use guide ── */}
           <section className="admin__section">
-            <h2 className="admin__section-title">📖 How to Use This Data for Training</h2>
+            <h2 className="admin__section-title">How to Use This Data</h2>
             <div className="admin__guide">
-              <div className="admin__guide-step">
-                <div className="admin__guide-num">1</div>
-                <div>
-                  <strong>Collect conversations</strong>
-                  <p>Chat with Aria naturally. Every conversation is automatically saved to the database.</p>
+              {[
+                { n:1, title:'Collect conversations', body:'Chat with Aria naturally. Every conversation is saved automatically.' },
+                { n:2, title:'Rate the responses',    body:'Click 👍 on good replies and 👎 on bad ones to create a quality signal.' },
+                { n:3, title:'Export your JSONL',     body:'Download the file. Choose "positive-rated only" for the cleanest dataset.' },
+                { n:4, title:'Fine-tune a model',     body:'Upload to OpenAI Fine-tuning, HuggingFace, or use locally with LLaMA-Factory.' },
+              ].map(({ n, title, body }) => (
+                <div key={n} className="admin__guide-step">
+                  <div className="admin__guide-num">{n}</div>
+                  <div><strong>{title}</strong><p>{body}</p></div>
                 </div>
-              </div>
-              <div className="admin__guide-step">
-                <div className="admin__guide-num">2</div>
-                <div>
-                  <strong>Rate the responses</strong>
-                  <p>In the chat, click 👍 on good AI replies and 👎 on bad ones. This creates a quality signal.</p>
-                </div>
-              </div>
-              <div className="admin__guide-step">
-                <div className="admin__guide-num">3</div>
-                <div>
-                  <strong>Export your JSONL file</strong>
-                  <p>Download the .jsonl file above. Choose &quot;positive-rated only&quot; for the cleanest dataset.</p>
-                </div>
-              </div>
-              <div className="admin__guide-step">
-                <div className="admin__guide-num">4</div>
-                <div>
-                  <strong>Fine-tune a model</strong>
-                  <p>Upload to <a href="https://platform.openai.com/finetune" target="_blank" rel="noreferrer">OpenAI Fine-tuning</a>, <a href="https://huggingface.co" target="_blank" rel="noreferrer">HuggingFace</a>, or use locally with <a href="https://github.com/hiyouga/LLaMA-Factory" target="_blank" rel="noreferrer">LLaMA-Factory</a>.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </section>
         </div>
       )}
 
-      {/* ── Toast ── */}
       {toast && <div className="admin__toast">{toast}</div>}
-    </div>
-  );
-}
-
-// ── StatCard sub-component ────────────────────────────────────────
-
-function StatCard({
-  label, value, icon, color, subtitle,
-}: {
-  label: string;
-  value: string | number;
-  icon: string;
-  color: 'purple' | 'blue' | 'teal' | 'green' | 'red';
-  subtitle?: string;
-}) {
-  return (
-    <div className={`stat-card stat-card--${color}`}>
-      <div className="stat-card__icon">{icon}</div>
-      <div className="stat-card__value">{value}</div>
-      <div className="stat-card__label">{label}</div>
-      {subtitle && <div className="stat-card__subtitle">{subtitle}</div>}
     </div>
   );
 }

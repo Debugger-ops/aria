@@ -389,7 +389,10 @@ export default function ChatWindow({ sessionId, onSessionUpdate }: ChatWindowPro
           <div className="chat-window__typing-indicator" aria-label="Aria is typing">
             <div className="chat-window__avatar chat-window__avatar--sm" aria-hidden="true">✦</div>
             <div className="typing-dots">
-              <span /><span /><span />
+              <span className="typing-dots__label">Aria is thinking…</span>
+              <div className="typing-dots__balls">
+                <span /><span /><span />
+              </div>
             </div>
           </div>
         )}

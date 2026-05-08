@@ -22,18 +22,13 @@ type AppAction =
   | { type: 'SELECT_SESSION'; id: string }
   | { type: 'NEW_CHAT' }
   | { type: 'SET_THEME'; theme: AppTheme }
-  | { type: 'DELETE_SESSION'; id: string };
+  | { type: 'DELETE_SESSION'; id: string }
+  | { type: 'TOGGLE_PIN'; id: string };
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'INIT':
-      return {
-        ...state,
-        sessions: action.sessions,
-        activeSessionId: action.activeSessionId,
-        theme: action.theme,
-        mounted: true,
-      };
+      return { ...state, sessions: action.sessions, activeSessionId: action.activeSessionId, theme: action.theme, mounted: true };
     case 'SET_SESSIONS':
       return { ...state, sessions: action.sessions, activeSessionId: action.activeSessionId };
     case 'SELECT_SESSION':
@@ -48,23 +43,22 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         sessions: filtered,
-        activeSessionId:
-          state.activeSessionId === action.id
-            ? (filtered[0]?.id ?? null)
-            : state.activeSessionId,
+        activeSessionId: state.activeSessionId === action.id ? (filtered[0]?.id ?? null) : state.activeSessionId,
       };
+    }
+    case 'TOGGLE_PIN': {
+      const updated = state.sessions.map((s) =>
+        s.id === action.id ? { ...s, pinned: !s.pinned } : s
+      );
+      saveSessions(updated);
+      return { ...state, sessions: updated };
     }
     default:
       return state;
   }
 }
 
-const initialState: AppState = {
-  sessions: [],
-  activeSessionId: null,
-  theme: 'dark',
-  mounted: false,
-};
+const initialState: AppState = { sessions: [], activeSessionId: null, theme: 'dark', mounted: false };
 
 export default function Home() {
   const [state, dispatch] = useReducer(appReducer, initialState);
@@ -74,12 +68,7 @@ export default function Home() {
   useEffect(() => {
     const stored = loadSessions();
     const storedTheme = (localStorage.getItem('aria-theme') as AppTheme) ?? 'dark';
-    dispatch({
-      type: 'INIT',
-      sessions: stored,
-      activeSessionId: stored[0]?.id ?? null,
-      theme: storedTheme,
-    });
+    dispatch({ type: 'INIT', sessions: stored, activeSessionId: stored[0]?.id ?? null, theme: storedTheme });
   }, []);
 
   // Sync theme to <html> and localStorage
@@ -89,12 +78,9 @@ export default function Home() {
     localStorage.setItem('aria-theme', theme);
   }, [theme, mounted]);
 
-  const handleSessionUpdate = useCallback(
-    (updatedSessions: ChatSession[], activeId: string) => {
-      dispatch({ type: 'SET_SESSIONS', sessions: updatedSessions, activeSessionId: activeId });
-    },
-    []
-  );
+  const handleSessionUpdate = useCallback((updatedSessions: ChatSession[], activeId: string) => {
+    dispatch({ type: 'SET_SESSIONS', sessions: updatedSessions, activeSessionId: activeId });
+  }, []);
 
   const handleSelectSession = useCallback((id: string) => {
     dispatch({ type: 'SELECT_SESSION', id });
@@ -110,6 +96,10 @@ export default function Home() {
 
   const handleDeleteSession = useCallback((id: string) => {
     dispatch({ type: 'DELETE_SESSION', id });
+  }, []);
+
+  const handleTogglePin = useCallback((id: string) => {
+    dispatch({ type: 'TOGGLE_PIN', id });
   }, []);
 
   if (!mounted) {
@@ -131,6 +121,7 @@ export default function Home() {
         onSelectSession={handleSelectSession}
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
+        onTogglePin={handleTogglePin}
         theme={theme}
         onSetTheme={handleSetTheme}
       />

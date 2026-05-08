@@ -460,6 +460,128 @@
   text-align: center;
 }
 
+/* ── Section labels (Pinned / Recent) ───────────────────────── */
+
+.sidebar__section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  padding: 0.25rem 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* ── Item actions (pin + delete) ───────────────────────────── */
+
+.sidebar__item-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.sidebar__item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.sidebar__list-item:hover .sidebar__item-actions {
+  opacity: 1;
+}
+
+.sidebar__item-action {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar__item-action:hover {
+  background: var(--surface-hover);
+  color: var(--accent-purple);
+}
+
+.sidebar__item-action--active {
+  color: var(--accent-purple);
+  opacity: 1 !important;
+}
+
+.sidebar__item-action--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+/* Always show pin indicator for pinned items */
+.sidebar__item--pinned + * .sidebar__item-actions,
+.sidebar__list-item:has(.sidebar__item--pinned) .sidebar__item-actions {
+  opacity: 1;
+}
+
+/* ── User card ──────────────────────────────────────────────── */
+
+.sidebar__user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid var(--border-color);
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+  cursor: pointer;
+}
+
+.sidebar__user-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-purple);
+}
+
+.sidebar__user-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sidebar__user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar__user-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__user-role {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
 /* ── Mobile: hide sidebar ─────────────────────────────────────── */
 
 @media (max-width: 768px) {
