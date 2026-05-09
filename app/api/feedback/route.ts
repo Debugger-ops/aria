@@ -27,7 +27,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       return Response.json({ error: 'rating must be "up" or "down"' }, { status: 400 });
     }
 
-    saveFeedback(messageId, sessionId, rating, userMessage, aiReply);
+    await saveFeedback(messageId, sessionId, rating, userMessage, aiReply);
 
     return Response.json({ success: true }, { status: 200 });
   } catch (err) {

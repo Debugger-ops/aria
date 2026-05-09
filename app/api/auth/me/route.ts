@@ -14,7 +14,7 @@ export async function PATCH(req: Request): Promise<Response> {
 
   try {
     const body = await req.json();
-    const updated = await updateUserProfile(user.id, {
+    const updated = await updateUserProfile(user.id as string, {
       name:     body.name,
       avatar:   body.avatar,
       password: body.password,

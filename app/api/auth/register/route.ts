@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { registerUser, createToken } from '@/lib/auth.node';
+import { registerUser, createToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
 export const runtime = 'nodejs';

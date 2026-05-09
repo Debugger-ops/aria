@@ -12,9 +12,11 @@
     "@google/generative-ai": "^0.24.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/mongoose": "^5.11.96",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.6.2",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"

@@ -7,7 +7,7 @@ import {
   generateId,
 } from '@/lib/chatLogic';
 import { callGemini } from '@/lib/gemini';
-import { saveMessage, initDb } from '@/lib/db';
+import { saveMessage } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -45,9 +45,6 @@ STYLE RULES:
 
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    // Ensure data directory exists
-    initDb();
-
     const body: ChatRequest = await request.json();
     const { message, sessionId: rawSessionId } = body;
 
@@ -72,7 +69,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const sessionTitle = trimmed.slice(0, 50) + (trimmed.length > 50 ? '…' : '');
 
     // Persist user message to DB
-    saveMessage(sessionId, sessionTitle, 'user', trimmed, userMsgId);
+    await saveMessage(sessionId, sessionTitle, 'user', trimmed, userMsgId);
 
     let reply: string;
     const geminiKey = process.env.GEMINI_API_KEY;
@@ -98,7 +95,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     appendServerHistory(sessionId, 'assistant', reply);
 
     // Persist AI reply to DB — include the aiMsgId so feedback can reference it
-    saveMessage(sessionId, sessionTitle, 'assistant', reply, aiMsgId);
+    await saveMessage(sessionId, sessionTitle, 'assistant', reply, aiMsgId);
 
     const response: ChatResponse = { reply, sessionId, aiMsgId };
     return Response.json(response, { status: 200 });

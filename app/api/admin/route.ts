@@ -16,23 +16,23 @@ export async function GET(request: NextRequest): Promise<Response> {
     const action = searchParams.get('action') ?? 'stats';
 
     if (action === 'stats') {
-      const stats = getAdminStats();
+      const stats = await getAdminStats();
       return Response.json(stats, { status: 200 });
     }
 
     if (action === 'conversations') {
-      const convs = getRecentConversations(50);
+      const convs = await getRecentConversations(50);
       return Response.json(convs, { status: 200 });
     }
 
     if (action === 'users') {
-      const users = getAllUsers();
+      const users = await getAllUsers();
       return Response.json(users, { status: 200 });
     }
 
     if (action === 'chart-data') {
       // Build messages-per-day for last 14 days
-      const convs = getAllConversations();
+      const convs = await getAllConversations();
       const now   = new Date();
       const days: Record<string, { user: number; ai: number }> = {};
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (action === 'export') {
       const format      = (searchParams.get('format') ?? 'openai') as 'openai' | 'simple';
       const onlyPositive = searchParams.get('onlyPositive') === 'true';
-      const data = exportTrainingData(format, onlyPositive);
+      const data = await exportTrainingData(format, onlyPositive);
 
       return new Response(data, {
         status: 200,
