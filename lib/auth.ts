@@ -113,12 +113,67 @@ export async function verifyTokenFromHeader(cookieHeader: string | null) {
 
 // ---------------- COOKIE HELPERS (NODE ONLY) ----------------
 
-export function setSessionCookie(response: any, token: string) {
-  response.cookies.set(COOKIE_NAME, token, {
+export async function setSessionCookie(token: string) {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
   });
+}
+
+export async function clearSessionCookie() {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
+}
+
+// ---------------- SESSION HELPERS ----------------
+
+export async function getSessionUser() {
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  if (!token) return null;
+
+  const payload = await verifyToken(token);
+  if (!payload || !payload.userId) return null;
+
+  const users = readUsers();
+  const user = users.find((u: any) => u.id === payload.userId);
+  if (!user) return null;
+
+  // strip sensitive fields before returning
+  const { passwordHash: _, ...safe } = user;
+  return safe;
+}
+
+// ---------------- USER MANAGEMENT ----------------
+
+export function getAllUsers() {
+  const users = readUsers();
+  return users.map(({ passwordHash: _, ...safe }: any) => safe);
+}
+
+export async function updateUserProfile(
+  userId: string,
+  updates: { name?: string; avatar?: string; password?: string }
+) {
+  const users = readUsers();
+  const idx = users.findIndex((u: any) => u.id === userId);
+  if (idx === -1) throw new Error('User not found');
+
+  if (updates.name)     users[idx].name   = updates.name;
+  if (updates.avatar)   users[idx].avatar = updates.avatar;
+  if (updates.password) {
+    users[idx].passwordHash = await bcrypt.hash(updates.password, 10);
+  }
+
+  writeUsers(users);
+
+  const { passwordHash: _, ...safe } = users[idx];
+  return safe;
 }
