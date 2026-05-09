@@ -8,10 +8,21 @@ export async function middleware(req: NextRequest) {
     token ? `aria-session=${token}` : null
   );
 
-  const isPublic =
-    req.nextUrl.pathname.startsWith('/login') ||
-    req.nextUrl.pathname.startsWith('/register');
+  const { pathname } = req.nextUrl;
 
+  // ✅ Public routes (no auth needed)
+  const isPublic =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register');
+
+  // ❌ IMPORTANT: Skip API routes completely
+  const isApi = pathname.startsWith('/api');
+
+  if (isApi) {
+    return NextResponse.next();
+  }
+
+  // 🔐 Protect only non-public pages
   if (!user && !isPublic) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
@@ -22,5 +33,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next|favicon.ico).*)'],
+  matcher: ['/((?!api|_next|favicon.ico).*)'],
 };
