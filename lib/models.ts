@@ -9,6 +9,7 @@ export interface IUser {
   passwordHash: string;
   role: 'user' | 'admin';
   avatar?: string;
+  geminiApiKey?: string;
   createdAt: string;
 }
 
@@ -19,6 +20,7 @@ const UserSchema = new Schema<IUser>({
   passwordHash: { type: String, required: true },
   role:         { type: String, enum: ['user', 'admin'], default: 'user' },
   avatar:       { type: String },
+  geminiApiKey: { type: String },
   createdAt:    { type: String, required: true },
 });
 

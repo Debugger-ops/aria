@@ -275,6 +275,12 @@ export default function Sidebar({
           )}
         </div>
 
+        {/* ── Settings link ── */}
+        <a href="/settings" className="sidebar__admin-link">
+          <span aria-hidden="true">⚙️</span>
+          Settings
+        </a>
+
         {/* ── Admin link ── */}
         {user?.role === 'admin' && (
           <a href="/admin" className="sidebar__admin-link" target="_blank" rel="noreferrer">

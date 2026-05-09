@@ -15,18 +15,25 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/register');
 
-  // ❌ IMPORTANT: Skip API routes completely
+  // ❌ Skip API routes completely
   const isApi = pathname.startsWith('/api');
+  if (isApi) return NextResponse.next();
 
-  if (isApi) {
-    return NextResponse.next();
-  }
-
-  // 🔐 Protect only non-public pages
+  // 🔐 Unauthenticated → login
   if (!user && !isPublic) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
+  }
+
+  // 🔒 Admin-only pages
+  if (pathname.startsWith('/admin')) {
+    const role = (user as Record<string, unknown>)?.role;
+    if (role !== 'admin') {
+      const url = req.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();

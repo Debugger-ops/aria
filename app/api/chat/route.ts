@@ -8,6 +8,7 @@ import {
 } from '@/lib/chatLogic';
 import { callGemini } from '@/lib/gemini';
 import { saveMessage } from '@/lib/db';
+import { getSessionUser, getUserApiKey } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -71,8 +72,12 @@ export async function POST(request: NextRequest): Promise<Response> {
     // Persist user message to DB
     await saveMessage(sessionId, sessionTitle, 'user', trimmed, userMsgId);
 
+    // Use user's own Gemini API key if set, otherwise fall back to server key
+    const sessionUser = await getSessionUser();
+    const userKey = sessionUser ? await getUserApiKey(sessionUser.id as string) : null;
+
     let reply: string;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiKey = userKey || process.env.GEMINI_API_KEY;
 
     if (geminiKey) {
       // ── Google Gemini (free) ──────────────────────────────────

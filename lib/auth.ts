@@ -121,15 +121,22 @@ export async function getAllUsers() {
   return users.map(({ passwordHash: _, ...safe }: Record<string, unknown>) => safe);
 }
 
+export async function getUserApiKey(userId: string): Promise<string | null> {
+  await connectToDatabase();
+  const user = await User.findOne({ id: userId }).select('geminiApiKey').lean() as { geminiApiKey?: string } | null;
+  return user?.geminiApiKey ?? null;
+}
+
 export async function updateUserProfile(
   userId: string,
-  updates: { name?: string; avatar?: string; password?: string }
+  updates: { name?: string; avatar?: string; password?: string; geminiApiKey?: string }
 ) {
   await connectToDatabase();
 
   const patch: Record<string, string> = {};
-  if (updates.name)   patch.name   = updates.name;
-  if (updates.avatar) patch.avatar = updates.avatar;
+  if (updates.name)         patch.name         = updates.name;
+  if (updates.avatar)       patch.avatar       = updates.avatar;
+  if (updates.geminiApiKey !== undefined) patch.geminiApiKey = updates.geminiApiKey;
   if (updates.password) {
     patch.passwordHash = await bcrypt.hash(updates.password, 10);
   }

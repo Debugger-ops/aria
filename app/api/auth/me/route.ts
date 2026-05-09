@@ -5,7 +5,8 @@ export const runtime = 'nodejs';
 export async function GET(): Promise<Response> {
   const user = await getSessionUser();
   if (!user) return Response.json({ error: 'Not authenticated.' }, { status: 401 });
-  return Response.json({ user });
+  // Include a flag so the client knows a key is set, without exposing the key itself
+  return Response.json({ user: { ...user, hasGeminiKey: !!(user as Record<string, unknown>).geminiApiKey, geminiApiKey: undefined } });
 }
 
 export async function PATCH(req: Request): Promise<Response> {
