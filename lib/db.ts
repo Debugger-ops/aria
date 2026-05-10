@@ -66,7 +66,7 @@ export async function saveMessage(
       $push: { messages: msg },
       $setOnInsert: { createdAt: now },
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
 }
 

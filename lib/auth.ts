@@ -144,7 +144,7 @@ export async function updateUserProfile(
   const user = await User.findOneAndUpdate(
     { id: userId },
     { $set: patch },
-    { new: true }
+    { returnDocument: 'after' }
   ).lean();
 
   if (!user) throw new Error('User not found');

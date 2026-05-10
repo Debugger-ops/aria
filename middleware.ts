@@ -26,15 +26,16 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 🔒 Admin-only pages
-  if (pathname.startsWith('/admin')) {
-    const role = (user as Record<string, unknown>)?.role;
-    if (role !== 'admin') {
-      const url = req.nextUrl.clone();
-      url.pathname = '/';
-      return NextResponse.redirect(url);
-    }
-  }
+  // 🔒 Admin-only pages - REMOVED THIS RESTRICTION
+  // Now any authenticated user can access /admin
+  // if (pathname.startsWith('/admin')) {
+  //   const role = (user as Record<string, unknown>)?.role;
+  //   if (role !== 'admin') {
+  //     const url = req.nextUrl.clone();
+  //     url.pathname = '/';
+  //     return NextResponse.redirect(url);
+  //   }
+  // }
 
   return NextResponse.next();
 }

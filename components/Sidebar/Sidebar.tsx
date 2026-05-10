@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ChatSession } from '@/lib/types';
 import type { AppTheme } from '@/app/page';
 import './Sidebar.css';
@@ -229,7 +230,7 @@ export default function Sidebar({
       <div className="sidebar__footer">
         {/* ── User info ── */}
         {user && (
-          <a href="/profile" className="sidebar__user-card">
+          <Link href="/profile" className="sidebar__user-card">
             <div className="sidebar__user-avatar">
               {avatarDisplay}
             </div>
@@ -240,7 +241,7 @@ export default function Sidebar({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', opacity: 0.4 }}>
               <path d="M9 18l6-6-6-6" />
             </svg>
-          </a>
+          </Link>
         )}
 
         {/* ── Theme picker ── */}
@@ -276,18 +277,16 @@ export default function Sidebar({
         </div>
 
         {/* ── Settings link ── */}
-        <a href="/settings" className="sidebar__admin-link">
+        <Link href="/settings" className="sidebar__admin-link">
           <span aria-hidden="true">⚙️</span>
           Settings
-        </a>
+        </Link>
 
-        {/* ── Admin link ── */}
-        {user?.role === 'admin' && (
-          <a href="/admin" className="sidebar__admin-link" target="_blank" rel="noreferrer">
-            <span aria-hidden="true">🔧</span>
-            Training Dashboard
-          </a>
-        )}
+        {/* ── Admin dashboard ── */}
+        <Link href="/admin" className="sidebar__admin-link">
+          <span aria-hidden="true">🔧</span>
+          Admin Dashboard
+        </Link>
 
         <p className="sidebar__credits">Powered by Next.js 16</p>
       </div>

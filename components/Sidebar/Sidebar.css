@@ -451,6 +451,18 @@
   text-decoration: none;
 }
 
+/* Admin variant — purple accent so it's visually distinct */
+.sidebar__admin-link--admin {
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #c4b5fd;
+}
+
+.sidebar__admin-link--admin:hover {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
 /* ── Credits ─────────────────────────────────────────────────── */
 
 .sidebar__credits {

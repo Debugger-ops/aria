@@ -193,13 +193,28 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        {/* Admin dashboard — only visible to admins */}
+        {user.role === 'admin' && (
+          <div className="settings-admin-section">
+            <div className="settings-admin-section__header">
+              <span className="settings-admin-section__icon">🔧</span>
+              <div>
+                <p className="settings-admin-section__title">Training Dashboard</p>
+                <p className="settings-admin-section__desc">
+                  View usage stats, conversations, user list, and export fine-tuning data.
+                </p>
+              </div>
+            </div>
+            <a href="/admin" className="settings-admin-section__btn">
+              Open Admin Dashboard →
+            </a>
+          </div>
+        )}
+
         {/* Footer nav */}
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
           <a href="/" className="auth-link settings-nav-btn">← Back to Aria</a>
           <a href="/profile" className="auth-link settings-nav-btn">👤 Profile</a>
-          {user.role === 'admin' && (
-            <a href="/admin" className="auth-link settings-nav-btn">🔧 Admin</a>
-          )}
         </div>
       </div>
     </div>
