@@ -782,3 +782,41 @@
   from { opacity: 0; transform: translateY(12px) scale(0.95); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* ── Live-update indicator ──────────────────────────────────────── */
+.admin__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--border-color);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  user-select: none;
+}
+.admin__live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.admin__live--realtime { color: var(--accent-teal); border-color: var(--accent-teal); }
+.admin__live--realtime .admin__live-dot {
+  background: var(--accent-teal);
+  box-shadow: 0 0 0 0 var(--accent-teal);
+  animation: live-pulse 1.8s ease-out infinite;
+}
+.admin__live--polling { color: var(--accent-blue); border-color: var(--accent-blue); }
+.admin__live--polling .admin__live-dot { background: var(--accent-blue); }
+.admin__live--connecting .admin__live-dot { animation: live-blink 1s steps(2) infinite; }
+
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-teal) 70%, transparent); }
+  70%  { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent-teal) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-teal) 0%, transparent); }
+}
+@keyframes live-blink { 0% { opacity: 1; } 100% { opacity: 0.3; } }

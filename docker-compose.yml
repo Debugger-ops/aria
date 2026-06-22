@@ -1,0 +1,49 @@
+# docker-compose.yml — local infra for Aria's real-time dashboard.
+#
+#   docker compose up -d        # start Redis + Kafka
+#   docker compose down         # stop them
+#
+# Then add to .env.local:
+#   REDIS_URL=redis://localhost:6379
+#   KAFKA_BROKERS=localhost:9092
+#
+# Both services are optional — the app runs without them (dashboard falls back
+# to polling), but with them the dashboard updates in real time and every event
+# is streamed to a durable Kafka log.
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: aria-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: aria-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # KRaft mode — no Zookeeper needed.
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped

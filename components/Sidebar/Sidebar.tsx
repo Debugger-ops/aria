@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ChatSession } from '@/lib/types';
 import type { AppTheme } from '@/app/page';
@@ -46,6 +46,7 @@ interface SidebarProps {
   onNewChat: () => void;
   onDeleteSession: (id: string) => void;
   onTogglePin: (id: string) => void;
+  onRenameSession?: (id: string, title: string) => void;
   theme: AppTheme;
   onSetTheme: (theme: AppTheme) => void;
 }
@@ -80,21 +81,41 @@ export default function Sidebar({
   onNewChat,
   onDeleteSession,
   onTogglePin,
+  onRenameSession,
   theme,
   onSetTheme,
 }: SidebarProps) {
-  const [showThemes,     setShowThemes]     = useState(false);
-  const [searchQuery,    setSearchQuery]    = useState('');
+  const [showThemes,      setShowThemes]     = useState(false);
+  const [searchQuery,     setSearchQuery]    = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [user,           setUser]           = useState<AuthUser | null>(null);
+  const [user,            setUser]           = useState<AuthUser | null>(null);
+  const [renamingId,      setRenamingId]     = useState<string | null>(null);
+  const [renameValue,     setRenameValue]    = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch current user
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d?.user && setUser(d.user))
       .catch(() => {});
   }, []);
+
+  // Focus rename input when entering rename mode
+  useEffect(() => {
+    if (renamingId) setTimeout(() => renameInputRef.current?.focus(), 30);
+  }, [renamingId]);
+
+  const startRename = (id: string, currentTitle: string) => {
+    setRenamingId(id);
+    setRenameValue(currentTitle);
+  };
+
+  const commitRename = () => {
+    if (renamingId && renameValue.trim()) {
+      onRenameSession?.(renamingId, renameValue.trim());
+    }
+    setRenamingId(null);
+  };
 
   // ── Filter + sort (pinned first) ──────────────────────────────
   const filtered = searchQuery.trim()
@@ -183,14 +204,31 @@ export default function Sidebar({
                         <button className="sidebar__confirm-yes" onClick={() => { onDeleteSession(s.id); setConfirmDeleteId(null); }} type="button">Delete</button>
                         <button className="sidebar__confirm-no"  onClick={() => setConfirmDeleteId(null)} type="button">Cancel</button>
                       </div>
+                    ) : renamingId === s.id ? (
+                      <div className="sidebar__item-rename">
+                        <input
+                          ref={renameInputRef}
+                          className="sidebar__rename-input"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') commitRename();
+                            if (e.key === 'Escape') setRenamingId(null);
+                          }}
+                          onBlur={commitRename}
+                          maxLength={80}
+                          aria-label="Rename conversation"
+                        />
+                      </div>
                     ) : (
                       <div className="sidebar__item-row">
                         <button
                           className={`sidebar__item ${s.id === activeSessionId ? 'sidebar__item--active' : ''} ${s.pinned ? 'sidebar__item--pinned' : ''}`}
                           onClick={() => onSelectSession(s.id)}
+                          onDoubleClick={() => startRename(s.id, s.title)}
                           type="button"
                           aria-current={s.id === activeSessionId ? 'true' : undefined}
-                          title={s.title}
+                          title={`${s.title} (double-click to rename)`}
                         >
                           <span className="sidebar__item-title">{s.title}</span>
                           <span className="sidebar__item-date">{formatDate(new Date(s.updatedAt))}</span>
@@ -205,6 +243,18 @@ export default function Sidebar({
                             title={s.pinned ? 'Unpin' : 'Pin'}
                           >
                             <PinIcon filled={s.pinned} />
+                          </button>
+                          <button
+                            className="sidebar__item-action"
+                            onClick={(e) => { e.stopPropagation(); startRename(s.id, s.title); }}
+                            type="button"
+                            aria-label="Rename conversation"
+                            title="Rename"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
                           </button>
                           <button
                             className="sidebar__item-action sidebar__item-action--danger"

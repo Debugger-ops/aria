@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, useReducer } from 'react';
+import { useEffect, useCallback, useReducer, useRef } from 'react';
 import { ChatSession } from '@/lib/types';
 import { loadSessions, saveSessions } from '@/lib/chatLogic';
 import ChatWindow from '@/components/ChatWindow/ChatWindow';
@@ -14,6 +14,7 @@ interface AppState {
   activeSessionId: string | null;
   theme: AppTheme;
   mounted: boolean;
+  sidebarOpen: boolean;
 }
 
 type AppAction =
@@ -23,7 +24,9 @@ type AppAction =
   | { type: 'NEW_CHAT' }
   | { type: 'SET_THEME'; theme: AppTheme }
   | { type: 'DELETE_SESSION'; id: string }
-  | { type: 'TOGGLE_PIN'; id: string };
+  | { type: 'TOGGLE_PIN'; id: string }
+  | { type: 'RENAME_SESSION'; id: string; title: string }
+  | { type: 'TOGGLE_SIDEBAR' };
 
 function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -53,16 +56,25 @@ function appReducer(state: AppState, action: AppAction): AppState {
       saveSessions(updated);
       return { ...state, sessions: updated };
     }
+    case 'RENAME_SESSION': {
+      const renamed = state.sessions.map((s) =>
+        s.id === action.id ? { ...s, title: action.title } : s
+      );
+      saveSessions(renamed);
+      return { ...state, sessions: renamed };
+    }
+    case 'TOGGLE_SIDEBAR':
+      return { ...state, sidebarOpen: !state.sidebarOpen };
     default:
       return state;
   }
 }
 
-const initialState: AppState = { sessions: [], activeSessionId: null, theme: 'dark', mounted: false };
+const initialState: AppState = { sessions: [], activeSessionId: null, theme: 'dark', mounted: false, sidebarOpen: false };
 
 export default function Home() {
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const { sessions, activeSessionId, theme, mounted } = state;
+  const { sessions, activeSessionId, theme, mounted, sidebarOpen } = state;
 
   // Hydrate from localStorage on client
   useEffect(() => {
@@ -102,6 +114,35 @@ export default function Home() {
     dispatch({ type: 'TOGGLE_PIN', id });
   }, []);
 
+  const handleRenameSession = useCallback((id: string, title: string) => {
+    dispatch({ type: 'RENAME_SESSION', id, title });
+  }, []);
+
+  const handleToggleSidebar = useCallback(() => {
+    dispatch({ type: 'TOGGLE_SIDEBAR' });
+  }, []);
+
+  // ── Global keyboard shortcuts ────────────────────────────────
+  const sidebarSearchRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      // Cmd/Ctrl+K → new chat
+      if (mod && e.key === 'k') {
+        e.preventDefault();
+        handleNewChat();
+      }
+      // Cmd/Ctrl+/ → focus sidebar search
+      if (mod && e.key === '/') {
+        e.preventDefault();
+        const el = document.querySelector<HTMLInputElement>('.sidebar__search-input');
+        el?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleNewChat]);
+
   if (!mounted) {
     return (
       <div className="app-shell app-shell--loading">
@@ -114,14 +155,19 @@ export default function Home() {
   }
 
   return (
-    <div className="app-shell" data-theme={theme}>
+    <div className={`app-shell${sidebarOpen ? ' app-shell--sidebar-open' : ''}`} data-theme={theme}>
+      {/* Backdrop for mobile sidebar */}
+      {sidebarOpen && (
+        <div className="app-shell__backdrop" onClick={handleToggleSidebar} aria-hidden="true" />
+      )}
       <Sidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
-        onSelectSession={handleSelectSession}
-        onNewChat={handleNewChat}
+        onSelectSession={(id) => { handleSelectSession(id); dispatch({ type: 'TOGGLE_SIDEBAR' }); }}
+        onNewChat={() => { handleNewChat(); if (sidebarOpen) dispatch({ type: 'TOGGLE_SIDEBAR' }); }}
         onDeleteSession={handleDeleteSession}
         onTogglePin={handleTogglePin}
+        onRenameSession={handleRenameSession}
         theme={theme}
         onSetTheme={handleSetTheme}
       />
@@ -129,6 +175,7 @@ export default function Home() {
         <ChatWindow
           sessionId={activeSessionId}
           onSessionUpdate={handleSessionUpdate}
+          onMenuToggle={handleToggleSidebar}
         />
       </main>
     </div>

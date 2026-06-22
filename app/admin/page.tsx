@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import './admin.css';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -150,25 +151,51 @@ export default function AdminPage() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const [liveMode, setLiveMode] = useState<'realtime' | 'polling' | 'connecting'>('connecting');
+
+  // `silent` skips the loading spinner — used for background live refreshes so
+  // the dashboard updates without flashing the loading state.
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
+      const opts: RequestInit = { cache: 'no-store' }; // never serve a stale browser-cached response
       const [sR, cR, chR, uR] = await Promise.all([
-        fetch('/api/admin?action=stats'),
-        fetch('/api/admin?action=conversations'),
-        fetch('/api/admin?action=chart-data'),
-        fetch('/api/admin?action=users'),
+        fetch('/api/admin?action=stats', opts),
+        fetch('/api/admin?action=conversations', opts),
+        fetch('/api/admin?action=chart-data', opts),
+        fetch('/api/admin?action=users', opts),
       ]);
       if (sR.ok)  setStats(await sR.json());
       if (cR.ok)  setConvs(await cR.json());
       if (chR.ok) setChartData(await chR.json());
       if (uR.ok)  setUsers(await uR.json());
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time load on mount
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ── Live updates via Server-Sent Events ──────────────────────────
+  // Subscribes to /api/admin/stream. Stats arrive instantly (pushed from the
+  // server on every chat/feedback event); other collections are refreshed
+  // silently. Falls back to the server's polling mode automatically.
+  useEffect(() => {
+    const es = new EventSource('/api/admin/stream');
+
+    es.addEventListener('meta', (e) => {
+      try { setLiveMode(JSON.parse((e as MessageEvent).data).mode); } catch {}
+    });
+    es.addEventListener('stats', (e) => {
+      try { setStats(JSON.parse((e as MessageEvent).data)); } catch {}
+    });
+    // When a real event fires, refresh the heavier collections in the background.
+    es.addEventListener('event', () => { void fetchData(true); });
+    es.onerror = () => setLiveMode('connecting');
+
+    return () => es.close();
+  }, [fetchData]);
 
   // Inherit theme from main app
   useEffect(() => {
@@ -226,11 +253,15 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="admin__header-actions">
-          <button className="admin__btn admin__btn--ghost" onClick={fetchData} disabled={loading}>
+          <span className={`admin__live admin__live--${liveMode}`}>
+            <span className="admin__live-dot" />
+            {liveMode === 'realtime' ? 'Live' : liveMode === 'polling' ? 'Auto' : 'Connecting…'}
+          </span>
+          <button className="admin__btn admin__btn--ghost" onClick={() => fetchData()} disabled={loading}>
             {loading ? '⟳ Loading…' : '↺ Refresh'}
           </button>
-          <a href="/profile" className="admin__btn admin__btn--ghost">👤 Profile</a>
-          <a href="/"        className="admin__btn admin__btn--ghost">← Aria</a>
+          <Link href="/profile" className="admin__btn admin__btn--ghost">👤 Profile</Link>
+          <Link href="/"        className="admin__btn admin__btn--ghost">← Aria</Link>
         </div>
       </header>
 

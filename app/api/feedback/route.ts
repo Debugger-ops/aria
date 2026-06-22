@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { saveFeedback } from '@/lib/db';
+import { emitEvent } from '@/lib/events';
 
 export const runtime = 'nodejs';
 
@@ -28,6 +29,11 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     await saveFeedback(messageId, sessionId, rating, userMessage, aiReply);
+    void emitEvent({
+      type: rating === 'up' ? 'feedback.up' : 'feedback.down',
+      sessionId,
+      meta: { messageId },
+    });
 
     return Response.json({ success: true }, { status: 200 });
   } catch (err) {

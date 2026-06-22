@@ -232,10 +232,164 @@
   box-shadow: 0 2px 12px rgba(139, 92, 246, 0.25);
 }
 
+/* ── Regenerate button ───────────────────────────────────────── */
+
+.bubble__regenerate-btn {
+  color: var(--accent-purple) !important;
+}
+.bubble__regenerate-btn:hover {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: var(--accent-purple) !important;
+}
+
+/* ── Streaming bubble ────────────────────────────────────────── */
+
+.bubble--streaming {
+  border-bottom-left-radius: 0.375rem;
+}
+
+/* ── Markdown content inside AI bubbles ──────────────────────── */
+
+.bubble__markdown {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--bubble-ai-text);
+  word-break: break-word;
+}
+
+.bubble__markdown p {
+  margin: 0 0 0.65em;
+}
+.bubble__markdown p:last-child { margin-bottom: 0; }
+
+.bubble__markdown h1,
+.bubble__markdown h2,
+.bubble__markdown h3,
+.bubble__markdown h4 {
+  margin: 0.9em 0 0.45em;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.bubble__markdown h1 { font-size: 1.2em; }
+.bubble__markdown h2 { font-size: 1.1em; }
+.bubble__markdown h3 { font-size: 1em; }
+
+.bubble__markdown ul,
+.bubble__markdown ol {
+  margin: 0.4em 0 0.7em 1.3em;
+  padding: 0;
+}
+.bubble__markdown li { margin-bottom: 0.25em; }
+
+.bubble__markdown strong { font-weight: 700; }
+.bubble__markdown em     { font-style: italic; }
+.bubble__markdown hr     { border: none; border-top: 1px solid var(--border-color); margin: 0.75em 0; }
+
+/* Inline code */
+.bubble__inline-code {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--accent-purple);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 0.3rem;
+  padding: 0.12em 0.38em;
+  font-family: var(--font-mono, 'Menlo', 'Fira Code', monospace);
+  font-size: 0.85em;
+}
+
+/* Fenced code block wrapper */
+.code-block {
+  margin: 0.6em 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: #282c34;
+}
+
+.code-block__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.75rem;
+  background: rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.code-block__lang {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.45);
+  text-transform: lowercase;
+  letter-spacing: 0.03em;
+}
+
+.code-block__copy {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.3rem;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.code-block__copy:hover {
+  background: rgba(139, 92, 246, 0.25);
+  color: #fff;
+  border-color: var(--accent-purple);
+}
+
+/* Links */
+.bubble__link {
+  color: var(--accent-teal);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.bubble__link:hover { opacity: 0.8; }
+
+/* Blockquote */
+.bubble__blockquote {
+  margin: 0.5em 0;
+  padding: 0.4em 0.85em;
+  border-left: 3px solid var(--accent-purple);
+  background: rgba(139, 92, 246, 0.06);
+  border-radius: 0 0.4rem 0.4rem 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Tables */
+.bubble__table-wrap {
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.bubble__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.bubble__table th,
+.bubble__table td {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border-color);
+  text-align: left;
+}
+.bubble__table th {
+  background: rgba(139, 92, 246, 0.1);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.bubble__table tr:hover td {
+  background: rgba(139, 92, 246, 0.04);
+}
+
 /* ── Mobile ──────────────────────────────────────────────────── */
 
 @media (max-width: 600px) {
-  .bubble { max-width: 88%; padding: 0.625rem 0.875rem 0.5rem; }
+  .bubble { max-width: 92%; padding: 0.625rem 0.875rem 0.5rem; }
   .bubble-avatar { width: 1.75rem; height: 1.75rem; font-size: 0.6rem; }
   .bubble__actions { opacity: 1; } /* always visible on touch */
+  .bubble__markdown { font-size: 0.875rem; }
+  .code-block { font-size: 0.78rem; }
 }

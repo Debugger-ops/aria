@@ -2,6 +2,7 @@
 
 import { connectToDatabase } from '@/lib/mongoose';
 import { Conversation, Feedback } from '@/lib/models';
+import { cacheGetJSON, cacheSetJSON, STATS_CACHE_KEY } from '@/lib/redis';
 
 // ── Types (kept identical so callers don't change) ────────────────
 
@@ -121,6 +122,11 @@ export async function getFeedbackForMessage(messageId: string): Promise<DbFeedba
 // ── Stats ─────────────────────────────────────────────────────────
 
 export async function getAdminStats(): Promise<AdminStats> {
+  // Serve from Redis when warm — the cache is invalidated on every new
+  // message/feedback event (see lib/events.ts), so it's never meaningfully stale.
+  const cached = await cacheGetJSON<AdminStats>(STATS_CACHE_KEY);
+  if (cached) return cached;
+
   await connectToDatabase();
   const [convs, feedback] = await Promise.all([
     Conversation.find({}).lean(),
@@ -135,7 +141,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     totalAiMessages   += msgs.filter(m => m.role === 'assistant').length;
   }
 
-  return {
+  const stats: AdminStats = {
     totalConversations:      convs.length,
     totalMessages,
     totalUserMessages,
@@ -144,6 +150,9 @@ export async function getAdminStats(): Promise<AdminStats> {
     thumbsDown:              feedback.filter((f: Record<string, unknown>) => f.rating === 'down').length,
     exportableTrainingPairs: totalAiMessages,
   };
+
+  await cacheSetJSON(STATS_CACHE_KEY, stats);
+  return stats;
 }
 
 // ── Export: JSONL for fine-tuning ─────────────────────────────────

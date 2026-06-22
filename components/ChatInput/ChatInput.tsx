@@ -52,6 +52,10 @@ export default function ChatInput({ onSend, isLoading, disabled = false }: ChatI
     setTimeout(() => textareaRef.current?.focus(), 0);
   }
 
+  const MAX = 4000;
+  const charCount = value.length;
+  const nearLimit = charCount > MAX * 0.85;
+
   return (
     <form className="chat-input" onSubmit={handleSubmit} aria-label="Chat message form">
       <div className="chat-input__inner">
@@ -66,7 +70,7 @@ export default function ChatInput({ onSend, isLoading, disabled = false }: ChatI
           disabled={isLoading || disabled}
           aria-label="Type your message"
           aria-describedby="send-hint"
-          maxLength={4000}
+          maxLength={MAX}
         />
 
         <button
@@ -78,23 +82,23 @@ export default function ChatInput({ onSend, isLoading, disabled = false }: ChatI
           {isLoading ? (
             <span className="chat-input__spinner" aria-hidden="true" />
           ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              width="20"
-              height="20"
-              aria-hidden="true"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
               <path d="M3.478 2.405a.75.75 0 0 0-.926.94l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.405Z" />
             </svg>
           )}
         </button>
       </div>
 
-      <p id="send-hint" className="chat-input__hint">
-        Press <kbd>Enter</kbd> to send · <kbd>Shift + Enter</kbd> for a new line
-      </p>
+      <div className="chat-input__footer">
+        <p id="send-hint" className="chat-input__hint">
+          <kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> new line
+        </p>
+        {nearLimit && (
+          <span className={`chat-input__char-count ${charCount >= MAX ? 'chat-input__char-count--limit' : ''}`}>
+            {charCount}/{MAX}
+          </span>
+        )}
+      </div>
     </form>
   );
 }

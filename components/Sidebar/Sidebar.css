@@ -8,7 +8,22 @@
   background: var(--surface-secondary);
   border-right: 1px solid var(--border-color);
   overflow: hidden;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, transform 0.28s cubic-bezier(0.4,0,0.2,1);
+  z-index: 50;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+  }
+  .app-shell--sidebar-open .sidebar {
+    transform: translateX(0);
+  }
 }
 
 /* ── Brand ──────────────────────────────────────────────────── */
@@ -260,6 +275,25 @@
 .sidebar__item-delete:hover {
   background: rgba(239, 68, 68, 0.12);
   color: #ef4444;
+}
+
+/* ── Inline rename ───────────────────────────────────────────── */
+
+.sidebar__item-rename {
+  padding: 0.25rem 0.5rem;
+}
+
+.sidebar__rename-input {
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1.5px solid var(--accent-purple);
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.825rem;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
 }
 
 /* ── Inline delete confirmation ──────────────────────────────── */

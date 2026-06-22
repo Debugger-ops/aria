@@ -1,13 +1,14 @@
 import { NextRequest } from 'next/server';
-import { ChatRequest, ChatResponse } from '@/lib/types';
+import { ChatRequest } from '@/lib/types';
 import {
   getMockResponse,
   getServerHistory,
   appendServerHistory,
   generateId,
 } from '@/lib/chatLogic';
-import { callGemini } from '@/lib/gemini';
+import { callGeminiStream, GeminiModel, DEFAULT_MODEL } from '@/lib/gemini';
 import { saveMessage } from '@/lib/db';
+import { emitEvent } from '@/lib/events';
 import { getSessionUser, getUserApiKey } from '@/lib/auth';
 
 export const runtime = 'nodejs';
@@ -42,73 +43,116 @@ STYLE RULES:
 - Always prioritise the user's actual need over a literal reading of their words
 `.trim();
 
+// ── SSE helpers ──────────────────────────────────────────────────
+
+const enc = new TextEncoder();
+
+function sseChunk(text: string): Uint8Array {
+  return enc.encode(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`);
+}
+
+function sseDone(aiMsgId: string, sessionId: string): Uint8Array {
+  return enc.encode(`data: ${JSON.stringify({ type: 'done', aiMsgId, sessionId })}\n\n`);
+}
+
+function sseError(message: string): Uint8Array {
+  return enc.encode(`data: ${JSON.stringify({ type: 'error', message })}\n\n`);
+}
+
+// ── Mock streaming (simulate token-by-token for demo) ────────────
+
+async function* mockStream(text: string): AsyncGenerator<string> {
+  const words = text.split(' ');
+  for (const word of words) {
+    yield word + ' ';
+    await new Promise((r) => setTimeout(r, 18 + Math.random() * 25));
+  }
+}
+
 // ── Route handler ────────────────────────────────────────────────
 
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const body: ChatRequest = await request.json();
-    const { message, sessionId: rawSessionId } = body;
+    const body: ChatRequest & { model?: GeminiModel } = await request.json();
+    const { message, sessionId: rawSessionId, model: requestedModel } = body;
 
     if (!message || typeof message !== 'string' || message.trim() === '') {
-      return Response.json(
-        { error: 'Message must be a non-empty string.' },
-        { status: 400 }
-      );
+      return Response.json({ error: 'Message must be a non-empty string.' }, { status: 400 });
     }
 
     const sessionId = rawSessionId || generateId();
     const trimmed = message.trim();
+    const model: GeminiModel = requestedModel || (process.env.GEMINI_MODEL as GeminiModel) || DEFAULT_MODEL;
 
-    // Generate IDs for both messages upfront
     const userMsgId = generateId();
     const aiMsgId   = generateId();
 
-    // Append user message to server-side history
     appendServerHistory(sessionId, 'user', trimmed);
 
-    // ── Derive a short session title from the first user message ─
     const sessionTitle = trimmed.slice(0, 50) + (trimmed.length > 50 ? '…' : '');
-
-    // Persist user message to DB
     await saveMessage(sessionId, sessionTitle, 'user', trimmed, userMsgId);
+    void emitEvent({ type: 'message.user', sessionId, meta: { messageId: userMsgId } });
 
-    // Use user's own Gemini API key if set, otherwise fall back to server key
     const sessionUser = await getSessionUser();
     const userKey = sessionUser ? await getUserApiKey(sessionUser.id as string) : null;
-
-    let reply: string;
     const geminiKey = userKey || process.env.GEMINI_API_KEY;
 
-    if (geminiKey) {
-      // ── Google Gemini (free) ──────────────────────────────────
-      const history = getServerHistory(sessionId);
-      try {
-        reply = await callGemini(geminiKey, SYSTEM_PROMPT, history, trimmed);
-      } catch (geminiErr) {
-        // Graceful fallback: quota exhausted, model unavailable, network error, etc.
-        console.warn('/api/chat Gemini unavailable, using smart fallback:', (geminiErr as Error).message);
-        await new Promise((r) => setTimeout(r, 400 + Math.random() * 400));
-        reply = getMockResponse(trimmed);
-      }
-    } else {
-      // ── Mock fallback (no API key needed) ─────────────────────
-      await new Promise((r) => setTimeout(r, 600 + Math.random() * 700));
-      reply = getMockResponse(trimmed);
-    }
+    // ── Build the streaming ReadableStream ───────────────────────
+    const stream = new ReadableStream({
+      async start(controller) {
+        let fullReply = '';
 
-    // Append AI reply to server-side history
-    appendServerHistory(sessionId, 'assistant', reply);
+        try {
+          const history = getServerHistory(sessionId);
 
-    // Persist AI reply to DB — include the aiMsgId so feedback can reference it
-    await saveMessage(sessionId, sessionTitle, 'assistant', reply, aiMsgId);
+          if (geminiKey) {
+            try {
+              for await (const chunk of callGeminiStream(geminiKey, SYSTEM_PROMPT, history, trimmed, model)) {
+                fullReply += chunk;
+                controller.enqueue(sseChunk(chunk));
+              }
+            } catch (geminiErr) {
+              console.warn('Gemini stream failed, falling back to mock:', (geminiErr as Error).message);
+              const fallback = getMockResponse(trimmed);
+              for await (const chunk of mockStream(fallback)) {
+                fullReply += chunk;
+                controller.enqueue(sseChunk(chunk));
+              }
+            }
+          } else {
+            await new Promise((r) => setTimeout(r, 300));
+            const mock = getMockResponse(trimmed);
+            for await (const chunk of mockStream(mock)) {
+              fullReply += chunk;
+              controller.enqueue(sseChunk(chunk));
+            }
+          }
 
-    const response: ChatResponse = { reply, sessionId, aiMsgId };
-    return Response.json(response, { status: 200 });
+          const finalReply = fullReply.trim();
+          appendServerHistory(sessionId, 'assistant', finalReply);
+          await saveMessage(sessionId, sessionTitle, 'assistant', finalReply, aiMsgId);
+          void emitEvent({ type: 'message.assistant', sessionId, meta: { messageId: aiMsgId } });
+          controller.enqueue(sseDone(aiMsgId, sessionId));
+        } catch (err) {
+          console.error('/api/chat stream error:', err);
+          controller.enqueue(sseError((err as Error).message ?? 'Internal error'));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+        Connection: 'keep-alive',
+      },
+    });
   } catch (err) {
     console.error('/api/chat error:', err);
-    const message =
-      err instanceof Error ? err.message : 'Internal server error.';
-    return Response.json({ error: message }, { status: 500 });
+    return Response.json({ error: (err as Error).message ?? 'Internal server error.' }, { status: 500 });
   }
 }
 
@@ -118,7 +162,7 @@ export async function GET(): Promise<Response> {
   return Response.json({
     status: 'ok',
     provider: hasKey ? 'gemini' : 'mock',
-    model: hasKey ? (process.env.GEMINI_MODEL ?? 'gemini-2.0-flash') : 'mock-engine',
+    model: hasKey ? (process.env.GEMINI_MODEL ?? DEFAULT_MODEL) : 'mock-engine',
     timestamp: new Date().toISOString(),
   });
 }
