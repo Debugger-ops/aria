@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useReducer, useState } from 'react';
-import { Message, ChatSession } from '@/lib/types';
+import { Message, ChatSession, ToolCall } from '@/lib/types';
 import {
   createMessage,
   createSession,
@@ -54,6 +54,8 @@ type WindowAction =
   | { type: 'SET_LOADING'; value: boolean }
   | { type: 'START_STREAM'; placeholder: Message; messages: Message[] }
   | { type: 'APPEND_STREAM'; msgId: string; text: string }
+  | { type: 'TOOL_CALL'; msgId: string; call: ToolCall }
+  | { type: 'TOOL_RESULT'; msgId: string; callId: string; ok: boolean; ms: number; summary: string }
   | { type: 'FINISH_STREAM'; msgId: string; dbMsgId: string };
 
 function windowReducer(state: WindowState, action: WindowAction): WindowState {
@@ -69,6 +71,34 @@ function windowReducer(state: WindowState, action: WindowAction): WindowState {
     case 'APPEND_STREAM': {
       const updated = state.messages.map((m) =>
         m.id === action.msgId ? { ...m, content: m.content + action.text } : m
+      );
+      return { ...state, messages: updated };
+    }
+    case 'TOOL_CALL': {
+      const updated = state.messages.map((m) =>
+        m.id === action.msgId
+          ? { ...m, toolCalls: [...(m.toolCalls ?? []), action.call] }
+          : m
+      );
+      return { ...state, messages: updated };
+    }
+    case 'TOOL_RESULT': {
+      const updated = state.messages.map((m) =>
+        m.id === action.msgId
+          ? {
+              ...m,
+              toolCalls: (m.toolCalls ?? []).map((c) =>
+                c.id === action.callId
+                  ? {
+                      ...c,
+                      status: (action.ok ? 'ok' : 'error') as ToolCall['status'],
+                      ms: action.ms,
+                      summary: action.summary,
+                    }
+                  : c
+              ),
+            }
+          : m
       );
       return { ...state, messages: updated };
     }
@@ -205,6 +235,7 @@ export default function ChatWindow({ sessionId, onSessionUpdate, onMenuToggle }:
         let buffer = '';
         let fullContent = '';
         let dbMsgId = '';
+        let toolTrajectory: ToolCall[] = [];
 
         while (true) {
           const { done, value } = await reader.read();
@@ -222,6 +253,30 @@ export default function ChatWindow({ sessionId, onSessionUpdate, onMenuToggle }:
               if (event.type === 'chunk') {
                 fullContent += event.text;
                 dispatch({ type: 'APPEND_STREAM', msgId: aiPlaceholder.id, text: event.text });
+              } else if (event.type === 'tool_call') {
+                const call: ToolCall = {
+                  id: event.id,
+                  name: event.name,
+                  label: event.label,
+                  step: event.step,
+                  status: 'running',
+                };
+                toolTrajectory = [...toolTrajectory, call];
+                dispatch({ type: 'TOOL_CALL', msgId: aiPlaceholder.id, call });
+              } else if (event.type === 'tool_result') {
+                toolTrajectory = toolTrajectory.map((c) =>
+                  c.id === event.id
+                    ? { ...c, status: (event.ok ? 'ok' : 'error') as ToolCall['status'], ms: event.ms, summary: event.summary }
+                    : c
+                );
+                dispatch({
+                  type: 'TOOL_RESULT',
+                  msgId: aiPlaceholder.id,
+                  callId: event.id,
+                  ok: event.ok,
+                  ms: event.ms,
+                  summary: event.summary,
+                });
               } else if (event.type === 'done') {
                 dbMsgId = event.aiMsgId;
               } else if (event.type === 'error') {
@@ -249,7 +304,12 @@ export default function ChatWindow({ sessionId, onSessionUpdate, onMenuToggle }:
           }, 350);
         }
 
-        const finalMessages = updatedMessages.concat({ ...aiPlaceholder, content: fullContent, dbMsgId });
+        const finalMessages = updatedMessages.concat({
+          ...aiPlaceholder,
+          content: fullContent,
+          dbMsgId,
+          ...(toolTrajectory.length > 0 ? { toolCalls: toolTrajectory } : {}),
+        });
         const idx2 = sessions.findIndex((s) => s.id === activeSessionId);
         if (idx2 !== -1) {
           sessions[idx2] = { ...sessions[idx2], messages: finalMessages, updatedAt: new Date() };

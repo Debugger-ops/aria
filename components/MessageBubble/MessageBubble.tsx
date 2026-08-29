@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { Message } from '@/lib/types';
+import { Message, ToolCall } from '@/lib/types';
 import { formatTimestamp } from '@/lib/chatLogic';
 import { speak, stopSpeaking, VoiceSettings, DEFAULT_VOICE_SETTINGS } from '@/lib/voice';
 import { playClickSound } from '@/lib/sounds';
@@ -111,6 +111,71 @@ function MarkdownContent({ content, isStreaming }: { content: string; isStreamin
 
 // ── Main component ────────────────────────────────────────────────
 
+// ── Agent tool trace ─────────────────────────────────────────────
+// Shows what the agent actually did before answering. Collapsed by default so
+// a normal reply looks like a normal reply; expandable because "why did it say
+// that?" is the first question anyone asks of an agent.
+
+const TOOL_ICONS: Record<string, string> = {
+  search_past_conversations: '⌕',
+  fetch_url: '↗',
+  calculate: '=',
+};
+
+function ToolTrace({ calls }: { calls: ToolCall[] }) {
+  const [open, setOpen] = useState(false);
+
+  const running = calls.some((c) => c.status === 'running');
+  const failed = calls.filter((c) => c.status === 'error').length;
+  const totalMs = calls.reduce((sum, c) => sum + (c.ms ?? 0), 0);
+
+  const headline = running
+    ? `Using ${calls[calls.length - 1]?.name.replace(/_/g, ' ')}…`
+    : `${calls.length} tool call${calls.length === 1 ? '' : 's'}` +
+      (failed > 0 ? ` · ${failed} failed` : '') +
+      (totalMs > 0 ? ` · ${totalMs}ms` : '');
+
+  return (
+    <div className={`tool-trace ${running ? 'tool-trace--running' : ''}`}>
+      <button
+        type="button"
+        className="tool-trace__toggle"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className="tool-trace__spinner" aria-hidden="true">
+          {running ? '◐' : failed > 0 ? '⚠' : '✓'}
+        </span>
+        <span className="tool-trace__headline">{headline}</span>
+        <span className="tool-trace__chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
+      </button>
+
+      {open && (
+        <ol className="tool-trace__list">
+          {calls.map((call) => (
+            <li key={call.id} className={`tool-trace__item tool-trace__item--${call.status}`}>
+              <span className="tool-trace__icon" aria-hidden="true">
+                {TOOL_ICONS[call.name] ?? '•'}
+              </span>
+              <div className="tool-trace__body">
+                <code className="tool-trace__label">{call.label}</code>
+                {call.summary && (
+                  <span className="tool-trace__summary">
+                    {call.status === 'error' ? '✗ ' : '→ '}{call.summary}
+                  </span>
+                )}
+              </div>
+              {typeof call.ms === 'number' && (
+                <span className="tool-trace__ms">{call.ms}ms</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 export default function MessageBubble({
   message,
   voiceSettings = DEFAULT_VOICE_SETTINGS,
@@ -187,6 +252,10 @@ export default function MessageBubble({
       )}
 
       <div className={`bubble ${isUser ? 'bubble--user' : 'bubble--ai'} ${isSpeaking ? 'bubble--speaking' : ''} ${isStreaming ? 'bubble--streaming' : ''}`}>
+        {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
+          <ToolTrace calls={message.toolCalls} />
+        )}
+
         {isUser ? (
           <p className="bubble__text">{message.content}</p>
         ) : (

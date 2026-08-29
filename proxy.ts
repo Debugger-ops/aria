@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTokenFromHeader } from '@/lib/auth-edge';
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const token = req.cookies.get('aria-session')?.value;
 
   const user = await verifyTokenFromHeader(

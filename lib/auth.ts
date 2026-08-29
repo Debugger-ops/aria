@@ -5,6 +5,7 @@ import 'server-only';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { jwtVerify } from 'jose';
+import { randomBytes, createHash } from 'node:crypto';
 
 import { connectToDatabase } from '@/lib/mongoose';
 import { User } from '@/lib/models';
@@ -151,4 +152,52 @@ export async function updateUserProfile(
 
   const { passwordHash: _, ...safe } = user as Record<string, unknown>;
   return safe;
+}
+
+// ── Password Reset ────────────────────────────────────────────────
+
+const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Create a password-reset token for the given email.
+ * Returns the raw token + user name, or null if no such user exists.
+ * Only the SHA-256 hash of the token is stored, so a DB leak can't be used to
+ * reset accounts.
+ */
+export async function createPasswordReset(
+  email: string,
+): Promise<{ token: string; name: string } | null> {
+  await connectToDatabase();
+  const user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) return null;
+
+  const token = randomBytes(32).toString('hex');
+  user.resetTokenHash = hashToken(token);
+  user.resetTokenExpires = new Date(Date.now() + RESET_TTL_MS).toISOString();
+  await user.save();
+
+  return { token, name: user.name };
+}
+
+/**
+ * Consume a reset token and set a new password.
+ * Throws if the token is invalid or expired.
+ */
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  await connectToDatabase();
+  const user = await User.findOne({ resetTokenHash: hashToken(token) });
+  if (!user || !user.resetTokenExpires) throw new Error('Invalid or expired reset link.');
+
+  if (new Date(user.resetTokenExpires).getTime() < Date.now()) {
+    throw new Error('This reset link has expired. Please request a new one.');
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.resetTokenHash = undefined;
+  user.resetTokenExpires = undefined;
+  await user.save();
 }

@@ -8,11 +8,20 @@ import { cacheGetJSON, cacheSetJSON, STATS_CACHE_KEY } from '@/lib/redis';
 
 export type MessageRole = 'user' | 'assistant';
 
+export interface DbToolCall {
+  name: string;
+  args: string;
+  ok: boolean;
+  ms: number;
+  summary: string;
+}
+
 export interface DbMessage {
   id: string;
   role: MessageRole;
   content: string;
   timestamp: string;
+  toolCalls?: DbToolCall[];
 }
 
 export interface DbConversation {
@@ -55,17 +64,25 @@ export async function saveMessage(
   role: MessageRole,
   content: string,
   messageId: string,
+  userId?: string,
+  toolCalls?: DbToolCall[],
 ): Promise<void> {
   await connectToDatabase();
   const now = new Date().toISOString();
   const msg: DbMessage = { id: messageId, role, content, timestamp: now };
+  if (toolCalls && toolCalls.length > 0) msg.toolCalls = toolCalls;
+
+  // userId is set once, when the conversation is first created ($setOnInsert),
+  // so a chat belongs to whoever started it.
+  const onInsert: Record<string, string> = { createdAt: now };
+  if (userId) onInsert.userId = userId;
 
   await Conversation.findOneAndUpdate(
     { sessionId },
     {
       $set:  { title, updatedAt: now },
       $push: { messages: msg },
-      $setOnInsert: { createdAt: now },
+      $setOnInsert: onInsert,
     },
     { upsert: true, returnDocument: 'after' }
   );
@@ -84,6 +101,42 @@ export async function getRecentConversations(limit = 20): Promise<DbConversation
     .limit(limit)
     .lean();
   return docs as unknown as DbConversation[];
+}
+
+// ── Per-user (personal dashboard) ─────────────────────────────────
+
+export async function getUserConversations(userId: string): Promise<DbConversation[]> {
+  await connectToDatabase();
+  const docs = await Conversation.find({ userId })
+    .sort({ updatedAt: -1 })
+    .lean();
+  return docs as unknown as DbConversation[];
+}
+
+export interface UserStats {
+  totalConversations: number;
+  totalMessages: number;
+  totalUserMessages: number;
+  totalAiMessages: number;
+}
+
+export async function getUserStats(userId: string): Promise<UserStats> {
+  await connectToDatabase();
+  const convs = (await Conversation.find({ userId }).lean()) as unknown as DbConversation[];
+
+  let totalMessages = 0, totalUserMessages = 0, totalAiMessages = 0;
+  for (const c of convs) {
+    totalMessages     += c.messages.length;
+    totalUserMessages += c.messages.filter((m) => m.role === 'user').length;
+    totalAiMessages   += c.messages.filter((m) => m.role === 'assistant').length;
+  }
+
+  return {
+    totalConversations: convs.length,
+    totalMessages,
+    totalUserMessages,
+    totalAiMessages,
+  };
 }
 
 // ── Feedback ──────────────────────────────────────────────────────
@@ -200,4 +253,94 @@ export async function exportTrainingData(
   }
 
   return lines.join('\n');
+}
+
+// ── Agent memory: full-text-ish search over a user's own history ───
+//
+// Backs the `search_past_conversations` tool. Deliberately scoped by userId so
+// the agent can never read another account's conversations, no matter what the
+// model is persuaded to ask for.
+
+export interface MessageSearchHit {
+  sessionId: string;
+  title: string;
+  role: MessageRole;
+  timestamp: string;
+  excerpt: string;
+  score: number;
+}
+
+const STOPWORDS = new Set([
+  'the','a','an','and','or','but','if','of','to','in','on','at','for','with',
+  'about','what','did','i','say','my','me','we','was','is','are','it','that',
+  'this','you','your','tell','remind','from','last','week','when','how',
+]);
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 2 && !STOPWORDS.has(t));
+}
+
+/** Pull ~240 characters of context around the first matching term. */
+function makeExcerpt(content: string, terms: string[]): string {
+  const lower = content.toLowerCase();
+  let idx = -1;
+  for (const term of terms) {
+    const found = lower.indexOf(term);
+    if (found !== -1 && (idx === -1 || found < idx)) idx = found;
+  }
+  if (idx === -1) return content.slice(0, 240) + (content.length > 240 ? '…' : '');
+
+  const start = Math.max(0, idx - 80);
+  const end = Math.min(content.length, idx + 160);
+  return (start > 0 ? '…' : '') + content.slice(start, end).trim() + (end < content.length ? '…' : '');
+}
+
+export async function searchUserMessages(
+  userId: string,
+  query: string,
+  limit = 5,
+): Promise<MessageSearchHit[]> {
+  await connectToDatabase();
+
+  const terms = tokenize(query);
+  if (terms.length === 0) return [];
+
+  // Cheap pre-filter in Mongo, precise scoring in memory. Conversations are
+  // per-user and bounded, so this stays well inside a tool timeout.
+  const convs = (await Conversation.find({ userId })
+    .sort({ updatedAt: -1 })
+    .limit(200)
+    .lean()) as unknown as DbConversation[];
+
+  const hits: MessageSearchHit[] = [];
+
+  for (const conv of convs) {
+    for (const msg of conv.messages ?? []) {
+      const lower = msg.content.toLowerCase();
+      let score = 0;
+      for (const term of terms) {
+        if (lower.includes(term)) score += 1;
+      }
+      if (score === 0) continue;
+
+      // Prefer messages matching more of the query, then more recent ones.
+      hits.push({
+        sessionId: conv.sessionId,
+        title: conv.title,
+        role: msg.role,
+        timestamp: msg.timestamp,
+        excerpt: makeExcerpt(msg.content, terms),
+        score: score / terms.length,
+      });
+    }
+  }
+
+  hits.sort((a, b) =>
+    b.score !== a.score ? b.score - a.score : b.timestamp.localeCompare(a.timestamp),
+  );
+
+  return hits.slice(0, limit);
 }

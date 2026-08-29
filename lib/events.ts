@@ -15,7 +15,14 @@ export type AriaEventType =
   | 'message.user'
   | 'message.assistant'
   | 'feedback.up'
-  | 'feedback.down';
+  | 'feedback.down'
+  // Agent telemetry. Every tool invocation is logged to Kafka so tool-level
+  // failure rates and latency are queryable independently of chat volume —
+  // 'is fetch_url flaky today?' is the question this makes answerable.
+  | 'tool.called'
+  | 'tool.succeeded'
+  | 'tool.failed'
+  | 'agent.max_steps';
 
 export interface AriaEvent {
   type: AriaEventType;

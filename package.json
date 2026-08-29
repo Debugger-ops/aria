@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "consumer": "node scripts/consumer.mjs"
+    "consumer": "node scripts/consumer.mjs",
+    "test": "node --experimental-strip-types --import ./tests/alias-hook.mjs --test tests/*.test.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mongoose": "^5.11.96",
+    "@types/nodemailer": "^8.0.1",
     "@types/react-syntax-highlighter": "^15.5.13",
     "bcryptjs": "^3.0.3",
     "ioredis": "^5.11.1",
@@ -22,6 +24,7 @@
     "kafkajs": "^2.2.4",
     "mongoose": "^9.6.2",
     "next": "16.2.4",
+    "nodemailer": "^9.0.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",

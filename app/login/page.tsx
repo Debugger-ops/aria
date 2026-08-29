@@ -78,6 +78,10 @@ function LoginForm() {
 
           {error && <p className="auth-error">{error}</p>}
 
+          <div className="auth-forgot">
+            <Link href="/forgot-password" className="auth-link">Forgot password?</Link>
+          </div>
+
           <button className="auth-submit" type="submit" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
           </button>

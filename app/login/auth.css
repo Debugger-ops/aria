@@ -261,3 +261,26 @@
   display: inline-block;
   width: fit-content;
 }
+
+/* ── Password reset additions ───────────────────────────────────── */
+.auth-help {
+  font-size: 13px;
+  color: var(--text-muted, #888);
+  margin: 0 0 4px;
+  line-height: 1.5;
+}
+.auth-forgot {
+  text-align: right;
+  margin: -6px 0 2px;
+  font-size: 13px;
+}
+.auth-devlink {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-elevated, rgba(127,127,127,0.08));
+  border: 1px dashed var(--border-color, rgba(127,127,127,0.3));
+  font-size: 12.5px;
+  line-height: 1.5;
+  word-break: break-all;
+}

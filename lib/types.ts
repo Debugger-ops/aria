@@ -1,6 +1,21 @@
 // Core message type
 export type MessageRole = 'user' | 'assistant';
 
+/** One tool invocation the agent made while answering. */
+export interface ToolCall {
+  id: string;
+  name: string;
+  /** Short label for display, e.g. `calculate(1250 * 1.08^5)`. */
+  label: string;
+  /** Which iteration of the agent loop issued this call (1-indexed). */
+  step: number;
+  status: 'running' | 'ok' | 'error';
+  /** Wall-clock duration once finished. */
+  ms?: number;
+  /** One-line result or error message. */
+  summary?: string;
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -8,6 +23,8 @@ export interface Message {
   timestamp: Date;
   dbMsgId?: string;      // ID in the server DB — used to submit feedback
   feedback?: 'up' | 'down'; // cached user rating
+  /** Tool trajectory for assistant messages produced by the agent loop. */
+  toolCalls?: ToolCall[];
 }
 
 // Chat session

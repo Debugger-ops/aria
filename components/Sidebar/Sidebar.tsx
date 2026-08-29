@@ -332,6 +332,12 @@ export default function Sidebar({
           Settings
         </Link>
 
+        {/* ── My personal dashboard ── */}
+        <Link href="/dashboard" className="sidebar__admin-link">
+          <span aria-hidden="true">📊</span>
+          My Dashboard
+        </Link>
+
         {/* ── Admin dashboard ── */}
         <Link href="/admin" className="sidebar__admin-link">
           <span aria-hidden="true">🔧</span>
