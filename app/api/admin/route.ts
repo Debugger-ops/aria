@@ -1,16 +1,17 @@
 import { NextRequest } from 'next/server';
 import { getAdminStats, exportTrainingData, getRecentConversations, getAllConversations } from '@/lib/db';
 import { getSessionUser, getAllUsers } from '@/lib/auth';
+import { isAdmin } from '@/lib/admin';
 
 export const runtime = 'nodejs';
 
 // GET /api/admin?action=stats|export|conversations|chart-data|users
 export async function GET(request: NextRequest): Promise<Response> {
   try {
-    // Auth check — admin only
+    // Auth check — admin only, by email allowlist (see lib/admin.ts).
     const user = await getSessionUser();
     if (!user) return Response.json({ error: 'Not authenticated.' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Admin access required.' }, { status: 403 });
+    if (!isAdmin(user)) return Response.json({ error: 'Admin access required.' }, { status: 403 });
 
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') ?? 'stats';

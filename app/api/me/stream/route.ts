@@ -1,21 +1,21 @@
 import { NextRequest } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { isAdmin } from '@/lib/admin';
-import { getAdminStats } from '@/lib/db';
+import { getUserStats } from '@/lib/db';
 import { createSubscriber, UPDATES_CHANNEL, REDIS_ENABLED } from '@/lib/redis';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// GET /api/admin/stream — Server-Sent Events.
+// GET /api/me/stream — Server-Sent Events for the PERSONAL dashboard.
 //
-// Pushes fresh admin stats to the dashboard the instant something changes:
-//   • With Redis → subscribes to the pub/sub channel that emitEvent() publishes
-//     to, so updates arrive in milliseconds (event-driven, no polling).
-//   • Without Redis → falls back to polling the DB every few seconds so the
-//     dashboard still updates without manual refresh.
+// The mirror of /api/admin/stream, but scoped to one user:
+//   • With Redis → subscribes to the same pub/sub channel emitEvent() writes
+//     to, and ignores any event whose userId isn't this user's, so your
+//     dashboard doesn't re-render every time somebody else sends a message.
+//   • Without Redis → polls the DB on an interval, same as the admin stream.
 //
-// Either way the "admin dashboard not updating" problem is solved.
+// Only ever returns this user's own stats; there is no way to ask for another
+// user's, because the id comes from the session cookie and not the request.
 
 const enc = new TextEncoder();
 const POLL_MS = 5000;
@@ -24,7 +24,8 @@ const HEARTBEAT_MS = 25000;
 export async function GET(request: NextRequest): Promise<Response> {
   const user = await getSessionUser();
   if (!user) return Response.json({ error: 'Not authenticated.' }, { status: 401 });
-  if (!isAdmin(user)) return Response.json({ error: 'Admin access required.' }, { status: 403 });
+
+  const userId = user.id as string;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -38,9 +39,9 @@ export async function GET(request: NextRequest): Promise<Response> {
 
       const pushStats = async () => {
         try {
-          send('stats', await getAdminStats());
+          send('stats', await getUserStats(userId));
         } catch (err) {
-          console.warn('[sse] stats fetch failed:', (err as Error).message);
+          console.warn('[me/sse] stats fetch failed:', (err as Error).message);
         }
       };
 
@@ -53,18 +54,20 @@ export async function GET(request: NextRequest): Promise<Response> {
 
       const subscriber = createSubscriber();
       if (subscriber) {
-        // Event-driven path: refresh stats whenever an update is published.
         subscriber.subscribe(UPDATES_CHANNEL).catch((e) =>
-          console.warn('[sse] subscribe failed:', (e as Error).message),
+          console.warn('[me/sse] subscribe failed:', (e as Error).message),
         );
         subscriber.on('message', (_channel, raw) => {
-          let evt: unknown = null;
-          try { evt = JSON.parse(raw); } catch { /* ignore */ }
+          let evt: { userId?: string } | null = null;
+          try { evt = JSON.parse(raw); } catch { return; }
+
+          // Somebody else's activity — not our business.
+          if (!evt || evt.userId !== userId) return;
+
           send('event', evt);
           void pushStats();
         });
       } else {
-        // Fallback path: poll on an interval.
         poll = setInterval(pushStats, POLL_MS);
       }
 

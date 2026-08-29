@@ -27,6 +27,9 @@ export type AriaEventType =
 export interface AriaEvent {
   type: AriaEventType;
   sessionId: string;
+  /** Owner of the conversation, when signed in. Lets a per-user SSE stream
+   *  ignore events that belong to somebody else's chat. */
+  userId?: string;
   /** ISO timestamp; defaults to now. */
   ts?: string;
   /** Optional extra context (messageId, etc.). */

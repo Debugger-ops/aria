@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTokenFromHeader } from '@/lib/auth-edge';
+import { isAdmin } from '@/lib/admin';
 
 export async function proxy(req: NextRequest) {
   const token = req.cookies.get('aria-session')?.value;
@@ -26,16 +27,16 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 🔒 Admin-only pages - REMOVED THIS RESTRICTION
-  // Now any authenticated user can access /admin
-  // if (pathname.startsWith('/admin')) {
-  //   const role = (user as Record<string, unknown>)?.role;
-  //   if (role !== 'admin') {
-  //     const url = req.nextUrl.clone();
-  //     url.pathname = '/';
-  //     return NextResponse.redirect(url);
-  //   }
-  // }
+  // 🔒 Admin-only pages — restricted to the email allowlist in lib/admin.ts.
+  //
+  // This is the UX guard: it stops a non-admin from ever seeing the page shell.
+  // It is NOT the security boundary — /api/admin and /api/admin/stream check
+  // independently, because a proxy can be bypassed but the API cannot.
+  if (pathname.startsWith('/admin') && !isAdmin(user)) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
 
   return NextResponse.next();
 }

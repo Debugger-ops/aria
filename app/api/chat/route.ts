@@ -164,7 +164,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     await safeSave('save user message', () =>
       saveMessage(sessionId, sessionTitle, 'user', trimmed, userMsgId, userId),
     );
-    void emitEvent({ type: 'message.user', sessionId, meta: { messageId: userMsgId } });
+    void emitEvent({ type: 'message.user', sessionId, userId, meta: { messageId: userMsgId } });
 
     let userKey: string | null = null;
     if (sessionUser?.id) {
@@ -224,6 +224,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                     void emitEvent({
                       type: 'tool.called',
                       sessionId,
+                      userId,
                       meta: { tool: name, step, messageId: aiMsgId },
                     });
                   },
@@ -232,6 +233,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                     void emitEvent({
                       type: ok ? 'tool.succeeded' : 'tool.failed',
                       sessionId,
+                      userId,
                       meta: { tool: name, ms, summary, messageId: aiMsgId },
                     });
                   },
@@ -239,6 +241,7 @@ export async function POST(request: NextRequest): Promise<Response> {
                     void emitEvent({
                       type: 'agent.max_steps',
                       sessionId,
+                      userId,
                       meta: { steps, messageId: aiMsgId },
                     });
                   },
@@ -274,6 +277,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           void emitEvent({
             type: 'message.assistant',
             sessionId,
+            userId,
             meta: { messageId: aiMsgId, toolCalls: trajectory.length },
           });
           // Only advertise a dbMsgId the client can actually submit feedback

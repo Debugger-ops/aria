@@ -110,9 +110,10 @@ export default function DashboardPage() {
   const [selected,  setSelected]  = useState<Conversation | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [authed,    setAuthed]    = useState(true);
+  const [live,      setLive]      = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const opts: RequestInit = { cache: 'no-store' };
       const [sR, cR, chR] = await Promise.all([
@@ -125,12 +126,34 @@ export default function DashboardPage() {
       if (cR.ok)  setConvs(await cR.json());
       if (chR.ok) setChartData(await chR.json());
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time load on mount
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // ── Live updates ───────────────────────────────────────────────
+  // Subscribes to /api/me/stream, which pushes whenever THIS user's data
+  // changes. Previously the dashboard only ever loaded once on mount, which is
+  // why it looked frozen while the admin page (already wired to its own stream)
+  // updated fine. `stats` arrive on the wire; conversations and chart data are
+  // refetched quietly so the panel doesn't flash a loading state.
+  useEffect(() => {
+    const es = new EventSource('/api/me/stream');
+
+    es.addEventListener('meta', () => setLive(true));
+
+    es.addEventListener('stats', (e) => {
+      try { setStats(JSON.parse((e as MessageEvent).data)); } catch { /* ignore */ }
+    });
+
+    es.addEventListener('event', () => { void fetchData(true); });
+
+    es.onerror = () => setLive(false);
+
+    return () => es.close();
+  }, [fetchData]);
 
   useEffect(() => {
     const theme = localStorage.getItem('aria-theme') ?? 'dark';
@@ -165,7 +188,10 @@ export default function DashboardPage() {
           <span className="admin__logo">✦</span>
           <div>
             <h1 className="admin__title">My Dashboard</h1>
-            <p className="admin__subtitle">Your conversations and activity with Aria</p>
+            <p className="admin__subtitle">
+              Your conversations and activity with Aria
+              {live && <span className="admin__live" title="Updating live"> · ● live</span>}
+            </p>
           </div>
         </div>
         <div className="admin__header-actions">
